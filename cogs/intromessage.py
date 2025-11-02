@@ -5,6 +5,8 @@ import os
 import easy_pil
 import random
 from dotenv import load_dotenv
+from PIL import ImageFilter, ImageFont
+from utils import DEFAULT_FONT_PATH
 
 
 load_dotenv(".secrets/.env")
@@ -14,6 +16,8 @@ SSL_NEW_PLAYER_GUIDE_CHANNEL_ID = int(os.getenv("SSL_MAIN_SERVER_NEW_PLAYER_GUID
 SSL_BOD_ROLE_ID = int(os.getenv("SSL_MAIN_SERVER_BOD_ROLE_ID"))
 SSL_ACADEMY_COACHES_ROLE_ID = int(os.getenv("SSL_MAIN_SERVER_ACADEMY_COACHES_ROLE_ID"))
 TEST_ID = int(os.getenv('DISCORD_TEST_ID'))
+
+
 
 class IntroMessage(commands.Cog):
     def __init__(self, bot):
@@ -56,21 +60,22 @@ class IntroMessage(commands.Cog):
                 f"If you need any help you can contact any of the <@&{bod_role_id}> or <@&{academy_coaches_role_id}>, and of course you can always ask question in <#{ssl_help_channel_id}>"
             )
         else:
-            welcome_message = f"Hello there {member.name}, welcome to {member.guild.name}!"    
+            welcome_message = f"Hello there {member.name}! Welcome to {member.guild.name}!"    
 
         images = os.listdir("./graphics/welcome_images")
         random_image = random.choice(images)
         
         bg = easy_pil.Editor(f"./graphics/welcome_images/{random_image}").resize((1920, 1080))
-        
+        bg.image = bg.image.filter(ImageFilter.GaussianBlur(radius=5))
+        print("Applied Gaussian Blur")
         print("Base background created")
         
         avatar_image = await easy_pil.load_image_async(str(member.avatar.url))
         avatar = easy_pil.Editor(avatar_image).resize((250, 250)).circle_image()
 
         # Fix the font module reference (easy_pil.Font, not easy.pil.Font)
-        font_big = easy_pil.Font.poppins(size=80, variant="bold")
-        font_small = easy_pil.Font.poppins(size=40, variant="bold")
+        font_big = ImageFont.truetype(DEFAULT_FONT_PATH, size=105)
+        font_small = ImageFont.truetype(DEFAULT_FONT_PATH, size=65)
 
         bg.paste(avatar, (835, 340))
         bg.ellipse((835, 340), 250, 250, outline="#ED9523", stroke_width=5)
@@ -78,9 +83,23 @@ class IntroMessage(commands.Cog):
         print(bg)
         print(welcome_channel)
 
-        # Fix parentheses and parameters for bg.text method calls
-        bg.text((960, 620), f"Welcome to {member.guild.name}", font=font_big, color="#070B51", align="center")
-        bg.text((960, 740), f"{member.name} is member #{member.guild.member_count} here!", font=font_small, color="#070B51", align="center")
+        x1, y1 = (960, 620) #Coordinates for the big welcome text in image
+        offsets = [(-4, 0), (4, 0), (0, -4), (0, 4)]
+
+        # Draw outline by drawing text shifted in four directions
+        for dx, dy in offsets:
+            bg.text((x1 + dx, y1 + dy), f"Welcome to {member.guild.name}", font=font_big, color="#ED9523", align="center")
+        # Draw main text on top
+        bg.text((x1, y1), f"Welcome to {member.guild.name}", font=font_big, color="#070B51", align="center")
+
+        x2, y2 = (960, 740) #Coordinates for the small member count text in image
+        offsets = [(-4, 0), (4, 0), (0, -4), (0, 4)]
+
+        # Draw outline by drawing text shifted in four directions
+        for dx, dy in offsets:
+            bg.text((x2 + dx, y2 + dy),  f"{member.name} is here!", font=font_small, color="#ED9523", align="center")
+        # Draw main text on top
+        bg.text((x2, y2),  f"{member.name} is here!", font=font_small, color="#070B51", align="center")
 
         image_file = discord.File(fp=bg.image_bytes, filename="welcome.png")  # Use a fixed filename for easy caching
 
