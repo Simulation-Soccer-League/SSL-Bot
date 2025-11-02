@@ -29,7 +29,7 @@ class IntroMessage(commands.Cog):
     
     @commands.Cog.listener()
     async def on_ready(self):
-        print("IntroMessage Cog is online!")
+        print("cog.intromessage is online!")
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
