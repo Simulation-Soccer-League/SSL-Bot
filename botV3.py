@@ -9,6 +9,7 @@ from db_utils import *
 load_dotenv('.secrets/.env') # load all the variables from the env file
 TOKEN = os.getenv('DISCORD_V3_TOKEN')
 OWNER_ID = int(os.getenv('DISCORD_OWNER'))
+TEST_ID = int(os.getenv('DISCORD_TEST_ID'))
 
 bot = commands.Bot(command_prefix="/", intents=discord.Intents.all())
 
@@ -16,7 +17,9 @@ bot = commands.Bot(command_prefix="/", intents=discord.Intents.all())
 async def on_ready():
     print("The Bot is now ready!")
     try: 
-        synced_commands = await bot.tree.sync()
+        guild = discord.Object(id=TEST_ID)
+        synced_commands = await bot.tree.sync(guild=guild)
+        # synced_commands = await bot.tree.sync()
         print(f"Synced {len(synced_commands)} commands.")
     except Exception as e:
         print("An error with syncing application commands has occurred. ", e)

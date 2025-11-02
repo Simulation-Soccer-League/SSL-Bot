@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 import os
-from easy_pil import Editor, Font, load_image_async
+import easy_pil
 import random
 from dotenv import load_dotenv
 
@@ -13,14 +13,19 @@ SSL_HELP_CHANNEL_ID = int(os.getenv("SSL_MAIN_SERVER_SSL_HELP_CHANNEL"))
 SSL_NEW_PLAYER_GUIDE_CHANNEL_ID = int(os.getenv("SSL_MAIN_SERVER_NEW_PLAYER_GUIDE_CHANNEL"))
 SSL_BOD_ROLE_ID = int(os.getenv("SSL_MAIN_SERVER_BOD_ROLE_ID"))
 SSL_ACADEMY_COACHES_ROLE_ID = int(os.getenv("SSL_MAIN_SERVER_ACADEMY_COACHES_ROLE_ID"))
+TEST_ID = int(os.getenv('DISCORD_TEST_ID'))
 
 class IntroMessage(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         
     @app_commands.command(name='test_join', description='Simulates a member joining')
+    @discord.app_commands.guilds(discord.Object(id=TEST_ID))
     async def test_join(self, interaction: discord.Interaction):
-        await self.on_member_join(interaction.author)
+        print("testing")
+        await interaction.response.defer()
+        await self.on_member_join(interaction.user)
+        await interaction.followup.send("Simulated join event triggered.")
     
     @commands.Cog.listener()
     async def on_ready(self):
@@ -28,6 +33,8 @@ class IntroMessage(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
+      
+        print(f"Simulating welcome for {member.name}")
 
         welcome_channel = member.guild.system_channel
         if not welcome_channel:
@@ -53,10 +60,10 @@ class IntroMessage(commands.Cog):
 
         images = os.listdir("./graphics/welcome_images")
         random_image = random.choice(images)
-
-      
+        
         bg = easy_pil.Editor(f"./graphics/welcome_images/{random_image}").resize((1920, 1080))
         
+        print("Base background created")
         
         avatar_image = await easy_pil.load_image_async(str(member.avatar.url))
         avatar = easy_pil.Editor(avatar_image).resize((250, 250)).circle_image()
@@ -67,8 +74,9 @@ class IntroMessage(commands.Cog):
 
         bg.paste(avatar, (835, 340))
         bg.ellipse((835, 340), 250, 250, outline="#ED9523", stroke_width=5)
-        bg.rectangle([(650, 570), (1270, 700)], fill="#ffffff")
-
+        # bg.rectangle([(650, 570), (1270, 700)], fill="#ffffff")
+        print(bg)
+        print(welcome_channel)
 
         # Fix parentheses and parameters for bg.text method calls
         bg.text((960, 620), f"Welcome to {member.guild.name}", font=font_big, color="#070B51", align="center")
