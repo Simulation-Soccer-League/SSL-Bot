@@ -17,8 +17,11 @@ bot = commands.Bot(command_prefix="/", intents=discord.Intents.all())
 async def on_ready():
     print("The Bot is now ready!")
     try: 
+        ## Use this when testing
         guild = discord.Object(id=TEST_ID)
         synced_commands = await bot.tree.sync(guild=guild)
+        
+        ## Use this for public
         # synced_commands = await bot.tree.sync()
         print(f"Synced {len(synced_commands)} commands.")
     except Exception as e:
