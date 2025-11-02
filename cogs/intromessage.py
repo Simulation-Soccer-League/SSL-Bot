@@ -18,7 +18,7 @@ class IntroMessage(commands.Cog):
     
     @commands.Cog.listener()
     async def on_ready(self):
-        print("IntroMessage Cog is online!")
+        print("cog.intromessage is online!")
 
     @commands.Cog.listener()
     async def on_member_join(self, member: discord.Member):
@@ -61,7 +61,6 @@ class IntroMessage(commands.Cog):
 
         bg.paste(avatar, (835, 340))
         bg.ellipse((835, 340), 250, 250, outline="#ED9523", stroke_width=5)
-        bg.rectangle([(650, 570), (1270, 700)], fill="#ffffff")
 
 
         # Fix parentheses and parameters for bg.text method calls
