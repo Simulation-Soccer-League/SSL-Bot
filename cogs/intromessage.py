@@ -1,9 +1,11 @@
 import discord
 from discord.ext import commands
+from discord import app_commands
 import os
-import easy_pil
+from easy_pil import Editor, Font, load_image_async
 import random
 from dotenv import load_dotenv
+
 
 load_dotenv(".secrets/.env")
 SSL_MAIN_SERVER_ID = int(os.getenv("SSL_MAIN_SERVER_ID"))
@@ -15,6 +17,10 @@ SSL_ACADEMY_COACHES_ROLE_ID = int(os.getenv("SSL_MAIN_SERVER_ACADEMY_COACHES_ROL
 class IntroMessage(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        
+    @app_commands.command(name='test_join', description='Simulates a member joining')
+    async def test_join(self, interaction: discord.Interaction):
+        await self.on_member_join(interaction.author)
     
     @commands.Cog.listener()
     async def on_ready(self):
