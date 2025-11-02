@@ -74,7 +74,7 @@ class IntroMessage(commands.Cog):
         avatar = easy_pil.Editor(avatar_image).resize((250, 250)).circle_image()
 
         # Fix the font module reference (easy_pil.Font, not easy.pil.Font)
-        font_big = ImageFont.truetype(DEFAULT_FONT_PATH, size=105)
+        font_big = ImageFont.truetype(DEFAULT_FONT_PATH, size=135)
         font_small = ImageFont.truetype(DEFAULT_FONT_PATH, size=65)
 
         bg.paste(avatar, (835, 340))
@@ -88,11 +88,11 @@ class IntroMessage(commands.Cog):
 
         # Draw outline by drawing text shifted in four directions
         for dx, dy in offsets:
-            bg.text((x1 + dx, y1 + dy), f"Welcome to {member.guild.name}", font=font_big, color="#ED9523", align="center")
+            bg.text((x1 + dx, y1 + dy), f"Hello there folks!", font=font_big, color="#ED9523", align="center")
         # Draw main text on top
-        bg.text((x1, y1), f"Welcome to {member.guild.name}", font=font_big, color="#070B51", align="center")
+        bg.text((x1, y1), f"Hello there folks!", font=font_big, color="#070B51", align="center")
 
-        x2, y2 = (960, 740) #Coordinates for the small member count text in image
+        x2, y2 = (960, 800) #Coordinates for the small member count text in image
         offsets = [(-4, 0), (4, 0), (0, -4), (0, 4)]
 
         # Draw outline by drawing text shifted in four directions
