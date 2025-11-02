@@ -6,7 +6,7 @@ import asyncio
 import requests
 from db_utils import *
 
-load_dotenv('.secrets/.env') # load all the variables from the env file
+load_dotenv(".secrets/.env") # load all the variables from the env file
 TOKEN = os.getenv('DISCORD_V3_TOKEN')
 OWNER_ID = int(os.getenv('DISCORD_OWNER'))
 
