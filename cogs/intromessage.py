@@ -49,7 +49,8 @@ class IntroMessage(commands.Cog):
         random_image = random.choice(images)
 
       
-        bg = easy_pil.Editor(f"./graphics/welcome_images/{random_image}").resize((1440, 720))
+        bg = easy_pil.Editor(f"./graphics/welcome_images/{random_image}").resize((1920, 1080))
+        
         
         avatar_image = await easy_pil.load_image_async(str(member.avatar.url))
         avatar = easy_pil.Editor(avatar_image).resize((250, 250)).circle_image()
@@ -59,11 +60,13 @@ class IntroMessage(commands.Cog):
         font_small = easy_pil.Font.poppins(size=40, variant="bold")
 
         bg.paste(avatar, (835, 340))
-        bg.ellipse((835, 340), 250, 250, outline="white", stroke_width=5)
+        bg.ellipse((835, 340), 250, 250, outline="#ED9523", stroke_width=5)
+        bg.rectangle([(650, 570), (1270, 700)], fill="#ffffff")
+
 
         # Fix parentheses and parameters for bg.text method calls
-        bg.text((960, 620), f"Welcome to {member.guild.name}", font=font_big, color="white", align="center")
-        bg.text((960, 740), f"{member.name} is member number #{member.guild.member_count} here!", font=font_small, color="white", align="center")
+        bg.text((960, 620), f"Welcome to {member.guild.name}", font=font_big, color="#070B51", align="center")
+        bg.text((960, 740), f"{member.name} is member #{member.guild.member_count} here!", font=font_small, color="#070B51", align="center")
 
         image_file = discord.File(fp=bg.image_bytes, filename="welcome.png")  # Use a fixed filename for easy caching
 
