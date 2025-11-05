@@ -11,7 +11,6 @@ TOKEN = os.getenv('DISCORD_V3_TOKEN')
 OWNER_ID = int(os.getenv('DISCORD_OWNER'))
 TEST_ID = int(os.getenv('DISCORD_TEST_ID'))
 TEST_SERVER_OWNER_ID = int(os.getenv('TEST_SERVER_OWNER_ID'))
-TEST_ID = int(os.getenv('DISCORD_TEST_ID'))
 
 bot = commands.Bot(command_prefix="/", intents=discord.Intents.all())
 
