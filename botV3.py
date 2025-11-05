@@ -10,6 +10,8 @@ load_dotenv('.secrets/.env') # load all the variables from the env file
 TOKEN = os.getenv('DISCORD_V3_TOKEN')
 OWNER_ID = int(os.getenv('DISCORD_OWNER'))
 TEST_ID = int(os.getenv('DISCORD_TEST_ID'))
+TEST_SERVER_OWNER_ID = int(os.getenv('TEST_SERVER_OWNER_ID'))
+TEST_ID = int(os.getenv('DISCORD_TEST_ID'))
 
 bot = commands.Bot(command_prefix="/", intents=discord.Intents.all())
 
@@ -77,11 +79,8 @@ async def whoami(interaction: discord.Interaction):
     session.close()
 
 @bot.tree.command(name="reload", description="Reloading named cogs")
+@discord.app_commands.guilds(discord.Object(id=TEST_ID))
 async def reload(interaction: discord.Interaction, extension: str):
-    if interaction.user.id != OWNER_ID:
-        await interaction.response.send_message("You do not have permission to use this command.")
-        return
-    else:
         await bot.unload_extension(f'cogs.{extension}')
         await bot.load_extension(f'cogs.{extension}')
         await interaction.response.send_message("Extension is being reloaded.")
