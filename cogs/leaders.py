@@ -8,6 +8,10 @@ import json
 import io
 from PIL import Image, ImageDraw, ImageFont
 from utils import DEFAULT_FONT_PATH
+from dotenv import load_dotenv
+import os # default module
+
+TEST_ID = int(os.getenv('DISCORD_TEST_ID'))
 
 def generate_stat_sheet_image(data, leader):
     # Prepare data
@@ -90,6 +94,7 @@ class Leaders(commands.Cog):
 
     
     @app_commands.command(name='test_classleaders', description='Shows the draft class leaders for a specific class (number)')
+    @discord.app_commands.guilds(discord.Object(id=TEST_ID))
     async def classleaders(self, interaction: discord.Interaction, season: typing.Optional[int] = None):
         if season is None:
             info = requests.get('https://api.simulationsoccer.com/player/getDraftClass')
