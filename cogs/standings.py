@@ -8,14 +8,14 @@ from PIL import Image, ImageDraw, ImageFont
 import io
 import logging
 
-from ..utils import (
+from utils import (
     STANDINGSAPIBASEURL,
     DEFAULT_FONT_PATH,
     NA_PLACEHOLDER,
     LEAGUEIDMAPPING,
     get_team_logo_path,
     CURRENT_SEASON,
-    DEAFULT_LOGO_PATH,       
+    DEFAULT_LOGO_PATH,       
     MAJOR_TROPHY_PATH,    
     MINOR_TROPHY_PATH,
 )
@@ -25,6 +25,10 @@ logger = logging.getLogger(__name__)
 class Standings(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        
+    @commands.Cog.listener()
+    async def on_ready(self):
+        print(f"{__name__} is online!")
 
     @app_commands.command(name="leaguestandings", description="Get the standings for the specified league")
     @app_commands.describe(league="The League name (Majors, Minors)", season="The season number (e.g., 23)")
