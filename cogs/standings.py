@@ -145,7 +145,7 @@ class Standings(commands.Cog):
 
             # League badge
             try:
-                badge = Image.open(DEAFULT_LOGO_PATH).convert("RGBA")
+                badge = Image.open(DEFAULT_LOGO_PATH).convert("RGBA")
                 badge = badge.resize((88, 88), Image.Resampling.LANCZOS)
                 image.paste(badge, (30, 30), badge)
             except Exception:
