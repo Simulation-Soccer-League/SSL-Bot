@@ -30,7 +30,6 @@ from utils import (
 logger = logging.getLogger(__name__)
 
 
-
 class Standings(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -94,11 +93,13 @@ class Standings(commands.Cog):
             league_title = (
                 f"{league.title()} Division {division}" if div_value else league.title()
             )
+            # Single-table image: no default logo/title
             image_bytes = await asyncio.to_thread(
                 self.create_standings_image,
                 standings_data,
                 league_title,
                 season,
+                False,  # show_header=False
             )
 
         else:
@@ -127,6 +128,7 @@ class Standings(commands.Cog):
                 )
                 return
 
+            # Two-division image: single centered title, no default logo
             image_bytes = await asyncio.to_thread(
                 self.create_two_divisions_image,
                 standings_div1,
@@ -144,7 +146,6 @@ class Standings(commands.Cog):
         file = discord.File(fp=image_bytes, filename="standings.png")
         eastern = pytz.timezone("US/Eastern")
         now_et = datetime.datetime.now(eastern)
-
 
         embed = discord.Embed(
             title=f"{league.title()} Standings - Season {season}",
@@ -178,7 +179,7 @@ class Standings(commands.Cog):
 
     # ---------- IMAGE GENERATION: SINGLE TABLE ----------
 
-    def create_standings_image(self, standings_data, league_name, season):
+    def create_standings_image(self, standings_data, league_name, season, show_header=True):
         try:
             # Theme and assets
             is_major = league_name.lower().startswith("major")
@@ -204,7 +205,7 @@ class Standings(commands.Cog):
 
             logo_size = 48
             row_height = 64
-            padding = 18
+            padding = 12
 
             columns = [
                 ("#", 40, "center", None),
@@ -222,7 +223,7 @@ class Standings(commands.Cog):
             col_widths = {col[0]: col[1] for col in columns}
             total_width = sum(w for _, w, _, _ in columns) + padding * 2
             num_rows = len(standings_data)
-            total_height = 190 + (row_height * (num_rows + 1)) + padding * 2
+            total_height = 100 + (row_height * (num_rows + 1)) + padding * 2
 
             image = Image.new(
                 "RGBA", (total_width + 260, total_height + 40), bg_dark
@@ -237,25 +238,25 @@ class Standings(commands.Cog):
                 b = int(accent_color[2] * (1 - ratio) + gradient_end[2] * ratio)
                 draw.line([(0, y), (image.width, y)], fill=(r, g, b, 255))
 
-            # League badge
-            try:
-                badge = Image.open(DEFAULT_LOGO_PATH).convert("RGBA")
-                badge = badge.resize((88, 88), Image.Resampling.LANCZOS)
-                image.paste(badge, (30, 30), badge)
-            except Exception:
-                pass
+            # League badge + title only if requested
+            if show_header:
+                try:
+                    badge = Image.open(DEFAULT_LOGO_PATH).convert("RGBA")
+                    badge = badge.resize((88, 88), Image.Resampling.LANCZOS)
+                    image.paste(badge, (30, 30), badge)
+                except Exception:
+                    pass
 
-            # Title
-            title_text = f"{league_name} League Table"
-            bbox = draw.textbbox((0, 0), title_text, font=title_font)
-            tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
-            table_center_x = padding + total_width // 2
-            draw.text(
-                (table_center_x - tw // 2, 38),
-                title_text,
-                font=title_font,
-                fill="#ffffff",
-            )
+                title_text = f"{league_name} League Table"
+                bbox = draw.textbbox((0, 0), title_text, font=title_font)
+                tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+                table_center_x = padding + total_width // 2
+                draw.text(
+                    (table_center_x - tw // 2, 38),
+                    title_text,
+                    font=title_font,
+                    fill="#ffffff",
+                )
 
             # Trophy + vertical label
             trophy_panel_x = total_width + 40
@@ -353,7 +354,7 @@ class Standings(commands.Cog):
                 logger.error(f"Error loading trophy or drawing side label: {e}")
 
             # Header row
-            header_y = 145
+            header_y = 80
             draw.rectangle(
                 [padding, header_y, total_width + padding, header_y + row_height],
                 fill=header_bg,
@@ -485,11 +486,12 @@ class Standings(commands.Cog):
         league_name,
         season,
     ):
+        # Generate bare tables (no header/logo inside each)
         img1_bytes = self.create_standings_image(
-            standings_div1, f"{league_name} Division 1", season
+            standings_div1, f"{league_name} Division 1", season, show_header=False
         )
         img2_bytes = self.create_standings_image(
-            standings_div2, f"{league_name} Division 2", season
+            standings_div2, f"{league_name} Division 2", season, show_header=False
         )
         if not img1_bytes or not img2_bytes:
             return None
@@ -497,12 +499,47 @@ class Standings(commands.Cog):
         img1 = Image.open(img1_bytes).convert("RGBA")
         img2 = Image.open(img2_bytes).convert("RGBA")
 
-        width = max(img1.width, img2.width)
-        height = img1.height + img2.height
+        # Theme for combined image
+        is_major = league_name.lower().startswith("major")
+        accent_color = (218, 185, 45) if is_major else (176, 40, 49)
+        bg_dark = (30, 30, 30)
+        gradient_end = (46, 46, 46)
 
-        combined = Image.new("RGBA", (width, height), (0, 0, 0, 255))
-        combined.paste(img1, (0, 0), img1)
-        combined.paste(img2, (0, img1.height), img2)
+        # Height reserved for the single global title
+        header_height = 140
+        width = max(img1.width, img2.width)
+        height = header_height + img1.height + img2.height
+
+        combined = Image.new("RGBA", (width, height), bg_dark)
+        draw = ImageDraw.Draw(combined)
+
+        # Gradient background
+        for y in range(combined.height):
+            ratio = y / combined.height
+            r = int(accent_color[0] * (1 - ratio) + gradient_end[0] * ratio)
+            g = int(accent_color[1] * (1 - ratio) + gradient_end[1] * ratio)
+            b = int(accent_color[2] * (1 - ratio) + gradient_end[2] * ratio)
+            draw.line([(0, y), (combined.width, y)], fill=(r, g, b, 255))
+
+        # Title-only header (no default logo)
+        try:
+            title_font = ImageFont.truetype(DEFAULT_FONT_PATH, 52)
+        except Exception:
+            title_font = ImageFont.load_default()
+
+        title_text = f"{league_name} League Table"
+        bbox = draw.textbbox((0, 0), title_text, font=title_font)
+        tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+        draw.text(
+            ((width - tw) // 2, (header_height - th) // 2),
+            title_text,
+            font=title_font,
+            fill="#ffffff",
+        )
+
+        # Paste the two division tables below the header
+        combined.paste(img1, (0, header_height), img1)
+        combined.paste(img2, (0, header_height + img1.height), img2)
 
         out = io.BytesIO()
         combined.save(out, format="PNG")
