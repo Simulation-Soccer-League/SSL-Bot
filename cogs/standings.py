@@ -29,7 +29,6 @@ from utils import (
 
 logger = logging.getLogger(__name__)
 
-
 class Standings(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -156,7 +155,6 @@ class Standings(commands.Cog):
         await interaction.followup.send(embed=embed, file=file)
 
     # ---------- DATA FETCHING ----------
-
     def getstandingsdataseason(
         self, season: str, league: int, division: Optional[int] = None
     ):
@@ -178,7 +176,6 @@ class Standings(commands.Cog):
             return None, f"Error parsing standings data: {e}"
 
     # ---------- IMAGE GENERATION: SINGLE TABLE ----------
-
     def create_standings_image(self, standings_data, league_name, season, show_header=True):
         try:
             # Theme and assets
@@ -478,7 +475,6 @@ class Standings(commands.Cog):
             return None
 
     # ---------- IMAGE GENERATION: TWO DIVISIONS ----------
-
     def create_two_divisions_image(
         self,
         standings_div1,
@@ -486,7 +482,7 @@ class Standings(commands.Cog):
         league_name,
         season,
     ):
-        # Generate bare tables (no header/logo inside each)
+        # Generate bare tables (no header/logo inside each, no trophy panel)
         img1_bytes = self.create_standings_image(
             standings_div1, f"{league_name} Division 1", season, show_header=False
         )
@@ -504,10 +500,40 @@ class Standings(commands.Cog):
         accent_color = (218, 185, 45) if is_major else (176, 40, 49)
         bg_dark = (30, 30, 30)
         gradient_end = (46, 46, 46)
+        trophy_path = MAJOR_TROPHY_PATH if is_major else MINOR_TROPHY_PATH
+
+        # Fonts
+        try:
+            title_font = ImageFont.truetype(DEFAULT_FONT_PATH, 52)
+            header_font = ImageFont.truetype(DEFAULT_FONT_PATH, 28)
+            row_font = ImageFont.truetype(DEFAULT_FONT_PATH, 22)
+        except Exception:
+            title_font = ImageFont.load_default()
+            header_font = ImageFont.load_default()
+            row_font = ImageFont.load_default()
+
+        # Table dimensions (match single table)
+        logo_size = 48
+        row_height = 64
+        padding = 12
+        columns = [
+            ("#", 40, "center", None),
+            ("Team", 330, "left", "Team"),
+            ("P", 50, "center", "MatchesPlayed"),
+            ("W", 50, "center", "Wins"),
+            ("D", 50, "center", "Draws"),
+            ("L", 50, "center", "Losses"),
+            ("GF", 50, "center", "GoalsFor"),
+            ("GA", 50, "center", "GoalsAgainst"),
+            ("GD", 52, "center", "GoalDifference"),
+            ("Pts", 54, "center", "Points"),
+        ]
+        col_widths = {col[0]: col[1] for col in columns}
+        total_width = sum(w for _, w, _, _ in columns) + padding * 2
 
         # Height reserved for the single global title
         header_height = 140
-        width = max(img1.width, img2.width)
+        width = total_width + 260  # Match single table width (table + trophy panel)
         height = header_height + img1.height + img2.height
 
         combined = Image.new("RGBA", (width, height), bg_dark)
@@ -522,11 +548,6 @@ class Standings(commands.Cog):
             draw.line([(0, y), (combined.width, y)], fill=(r, g, b, 255))
 
         # Title-only header (no default logo)
-        try:
-            title_font = ImageFont.truetype(DEFAULT_FONT_PATH, 52)
-        except Exception:
-            title_font = ImageFont.load_default()
-
         title_text = f"{league_name} League Table"
         bbox = draw.textbbox((0, 0), title_text, font=title_font)
         tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
@@ -537,15 +558,111 @@ class Standings(commands.Cog):
             fill="#ffffff",
         )
 
-        # Paste the two division tables below the header
+        # Paste the two division tables below the header (aligned left)
         combined.paste(img1, (0, header_height), img1)
         combined.paste(img2, (0, header_height + img1.height), img2)
+
+        # Single trophy + vertical label positioned relative to combined tables
+        # trophy_panel_x and trophy_panel_y match single table positioning logic
+        trophy_panel_x = total_width + 40
+        combined_table_height = img1.height + img2.height
+        trophy_panel_y = header_height + combined_table_height - 360
+        trophy_panel_w, trophy_panel_h = 200, 340
+
+        try:
+            trophy = Image.open(trophy_path).convert("RGBA")
+
+            tr_w, tr_h = trophy.size
+            scale = min(trophy_panel_w / tr_w, trophy_panel_h / tr_h)
+            new_w, new_h = int(tr_w * scale), int(tr_h * scale)
+            trophy = trophy.resize((new_w, new_h), Image.Resampling.LANCZOS)
+
+            center_x = trophy_panel_x + (trophy_panel_w - new_w) // 2
+            center_y = trophy_panel_y + (trophy_panel_h - new_h) // 2
+
+            # Shadow from trophy shape
+            shadow = Image.new("RGBA", trophy.size, (0, 0, 0, 0))
+            shadow_mask = trophy.split()[3]
+            shadow.paste((0, 0, 0, 180), mask=shadow_mask)
+            shadow = shadow.filter(ImageFilter.GaussianBlur(radius=6))
+            sx = center_x + 8
+            sy = center_y + 8
+            combined.paste(shadow, (sx, sy), shadow)
+
+            combined.paste(trophy, (center_x, center_y), trophy)
+
+            # Vertical MAJORS/MINORS label (same logic as single table)
+            side_label = "MAJORS" if is_major else "MINORS"
+
+            label_top_limit = 20 + header_height  # Offset for header
+            label_bottom_limit = center_y - 10
+            available_height = max(60, label_bottom_limit - label_top_limit)
+
+            min_size = 16
+            max_size = 110
+            chosen_font = ImageFont.load_default()
+            chosen_label_img = None
+
+            for size in range(min_size, max_size + 1):
+                test_font = ImageFont.truetype(
+                    DEFAULT_FONT_PATH, size
+                ) if DEFAULT_FONT_PATH else ImageFont.load_default()
+
+                tmp_draw = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
+                tbbox = tmp_draw.textbbox((0, 0), side_label, font=test_font)
+                lw, lh = tbbox[2] - tbbox[0], tbbox[3] - tbbox[1]
+
+                temp_label = Image.new("RGBA", (lw, lh), (0, 0, 0, 0))
+                temp_draw = ImageDraw.Draw(temp_label)
+                darker_accent = tuple(max(0, int(c * 0.6)) for c in accent_color)
+                temp_draw.text(
+                    (0, 0),
+                    side_label,
+                    font=test_font,
+                    fill=(*darker_accent, int(255 * 0.4)),
+                )
+
+                rotated = temp_label.rotate(-90, expand=True)
+                rotated_h = rotated.height
+
+                if rotated_h <= available_height:
+                    chosen_font = test_font
+                    chosen_label_img = rotated
+                else:
+                    break
+
+            if chosen_label_img is None:
+                fallback_font = ImageFont.truetype(
+                    DEFAULT_FONT_PATH, 20
+                ) if DEFAULT_FONT_PATH else ImageFont.load_default()
+                tmp_draw = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
+                tbbox = tmp_draw.textbbox((0, 0), side_label, font=fallback_font)
+                lw, lh = tbbox[2] - tbbox[0], tbbox[3] - tbbox[1]
+                temp_label = Image.new("RGBA", (lw, lh), (0, 0, 0, 0))
+                temp_draw = ImageDraw.Draw(temp_label)
+                darker_accent = tuple(max(0, int(c * 0.6)) for c in accent_color)
+                temp_draw.text(
+                    (0, 0),
+                    side_label,
+                    font=fallback_font,
+                    fill=(*darker_accent, int(255 * 0.4)),
+                )
+                chosen_label_img = temp_label.rotate(-90, expand=True)
+
+            label_img = chosen_label_img
+            lx = trophy_panel_x + (trophy_panel_w - label_img.width) // 2
+            ly = label_bottom_limit - label_img.height
+            if ly < label_top_limit:
+                ly = label_top_limit
+            combined.paste(label_img, (lx, ly), label_img)
+
+        except Exception as e:
+            logger.error(f"Error loading trophy or drawing side label: {e}")
 
         out = io.BytesIO()
         combined.save(out, format="PNG")
         out.seek(0)
         return out
-
 
 async def setup(bot):
     await bot.add_cog(Standings(bot))
