@@ -107,26 +107,6 @@ class Leaders(commands.Cog):
         embed.add_field(name = "", value = formatted_stat_string, inline = True)
         await interaction.response.send_message(embed = embed)
 
-    
-    @app_commands.command(name='test_classleaders', description='Shows the draft class leaders for a specific class (number)')
-    @discord.app_commands.guilds(discord.Object(id=TEST_ID))
-    async def classleaders(self, interaction: discord.Interaction, season: typing.Optional[int] = None):
-        if season is None:
-            info = requests.get('https://api.simulationsoccer.com/player/getDraftClass')
-            leader = "Academy"
-        else:
-            info = requests.get('https://api.simulationsoccer.com/player/getDraftClass?class=' + str(season))
-            leader = 'S' + str(season)
-        data = pd.DataFrame(json.loads(info.content))
-        embed = discord.Embed(color=discord.Color(0xBD9523))
-        embed.title = leader + ' Class Leaders'
-
-        # Generate image
-        buf = generate_stat_sheet_image(data, leader)
-        file = discord.File(buf, filename="classleaders.png")
-        embed.set_image(url="attachment://classleaders.png")
-
-        await interaction.response.send_message(file=file, embed=embed)
         
 async def setup(bot):
     await bot.add_cog(Leaders(bot))

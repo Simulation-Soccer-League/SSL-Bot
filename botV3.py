@@ -77,6 +77,7 @@ async def whoami(interaction: discord.Interaction):
             await interaction.response.send_message("You have no user stored. Use /store to store your forum username.")
     session.close()
 
+
 @bot.tree.command(name="reload", description="Reloading named cogs")
 @discord.app_commands.guilds(discord.Object(id=TEST_ID))
 async def reload(interaction: discord.Interaction, extension: str):
