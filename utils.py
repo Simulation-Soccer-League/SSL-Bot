@@ -52,6 +52,8 @@ TEAM_ABBREVIATIONS = {
 CURRENT_SEASON = "23"
 
 DEFAULT_LOGO_PATH = "./graphics/logos/league-logo.png"  
+MAJOR_LEAGUE_LOGO_PATH = "./graphics/logos/major_league_logo.png"
+MINOR_LEAGUE_LOGO_PATH = "./graphics/logos/minor_league_logo.png"
 
 def get_team_logo_path(team_name): # Returns the file path for the team logo image based on the team name.
     

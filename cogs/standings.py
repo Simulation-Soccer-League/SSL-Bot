@@ -16,6 +16,7 @@ load_dotenv(".secrets/.env")
 TEST_ID = int(os.getenv("DISCORD_TEST_ID"))
 
 from utils import (
+    
     STANDINGSAPIBASEURL,
     DEFAULT_FONT_PATH,
     NA_PLACEHOLDER,
@@ -25,7 +26,9 @@ from utils import (
     DEFAULT_LOGO_PATH,
     MAJOR_TROPHY_PATH,
     MINOR_TROPHY_PATH,
-)
+    MAJOR_LEAGUE_LOGO_PATH,
+    MINOR_LEAGUE_LOGO_PATH
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -188,7 +191,7 @@ class Standings(commands.Cog):
             row_odd = (26, 26, 26, 255)
             top_row = accent_color + (100,)
 
-            trophy_path = MAJOR_TROPHY_PATH if is_major else MINOR_TROPHY_PATH
+            league_logo_path = MAJOR_LEAGUE_LOGO_PATH if is_major else MINOR_LEAGUE_LOGO_PATH
 
             # Fonts
             try:
@@ -261,7 +264,7 @@ class Standings(commands.Cog):
             trophy_panel_w, trophy_panel_h = 200, 340
 
             try:
-                trophy = Image.open(trophy_path).convert("RGBA")
+                trophy = Image.open(league_logo_path).convert("RGBA")
 
                 tr_w, tr_h = trophy.size
                 scale = min(trophy_panel_w / tr_w, trophy_panel_h / tr_h)
@@ -500,7 +503,7 @@ class Standings(commands.Cog):
         accent_color = (218, 185, 45) if is_major else (176, 40, 49)
         bg_dark = (30, 30, 30)
         gradient_end = (46, 46, 46)
-        trophy_path = MAJOR_TROPHY_PATH if is_major else MINOR_TROPHY_PATH
+        league_logo_path = MAJOR_LEAGUE_LOGO_PATH if is_major else MINOR_LEAGUE_LOGO_PATH
 
         # Fonts
         try:
@@ -570,7 +573,7 @@ class Standings(commands.Cog):
         trophy_panel_w, trophy_panel_h = 200, 340
 
         try:
-            trophy = Image.open(trophy_path).convert("RGBA")
+            trophy = Image.open(league_logo_path).convert("RGBA")
 
             tr_w, tr_h = trophy.size
             scale = min(trophy_panel_w / tr_w, trophy_panel_h / tr_h)
