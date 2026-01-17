@@ -9,14 +9,12 @@ import io
 import logging
 from dotenv import load_dotenv
 import os
-from typing import Optional
 import pytz
 
 load_dotenv(".secrets/.env")
 TEST_ID = int(os.getenv("DISCORD_TEST_ID"))
 
 from utils import (
-    
     STANDINGSAPIBASEURL,
     DEFAULT_FONT_PATH,
     NA_PLACEHOLDER,
@@ -24,13 +22,13 @@ from utils import (
     get_team_logo_path,
     CURRENT_SEASON,
     DEFAULT_LOGO_PATH,
-    MAJOR_TROPHY_PATH,
-    MINOR_TROPHY_PATH,
     MAJOR_LEAGUE_LOGO_PATH,
-    MINOR_LEAGUE_LOGO_PATH
-    )
+    MINOR_LEAGUE_LOGO_PATH,
+    DEMO_STANDINGS_DATA,
+)
 
 logger = logging.getLogger(__name__)
+
 
 class Standings(commands.Cog):
     def __init__(self, bot):
@@ -40,25 +38,27 @@ class Standings(commands.Cog):
     async def on_ready(self):
         print(f"{__name__} is online!")
 
+    # ---------------- COMMAND ----------------
     @app_commands.command(
         name="leaguestandings",
         description="Get the standings for the specified league",
     )
     @app_commands.guilds(discord.Object(id=TEST_ID))
     @app_commands.describe(
-        league="The League name (Majors, Minors)",
-        season="The season number (e.g., 23)",
-        division="Division number (1 or 2). Leave empty for both (S24+).",
+        league="Majors or Minors",
+        season="Season number (e.g. 24)",
+        division="Division to show: 1, 2, or All (S24+ only)",
     )
     async def leaguestandings(
         self,
         interaction: discord.Interaction,
         league: str,
         season: str = CURRENT_SEASON,
-        division: Optional[int] = None,
+        division: str = "All",
     ):
         league_name_lower = league.lower()
         league_id = LEAGUEIDMAPPING.get(league_name_lower)
+
         if league_id is None or league_id == 0:
             await interaction.response.send_message(
                 "Standings are only available for Majors and Minors leagues.",
@@ -67,119 +67,182 @@ class Standings(commands.Cog):
             return
 
         await interaction.response.defer()
-        season_int = int(season)
 
-        # Case 1: old seasons or explicit division -> single table
-        if season_int < 24 or division is not None:
-            div_value = division if season_int >= 24 else None
-            standings_data, error_msg = await asyncio.to_thread(
+        try:
+            season_int = int(season)
+        except ValueError:
+            await interaction.followup.send(
+                "Invalid season number provided.",
+                ephemeral=True,
+            )
+            
+            return
+        
+        has_divisions = season_int >= 24
+
+        # -------- Enforce S24+ rule --------
+        if season_int < 24 and division.lower() != "all":
+            await interaction.followup.send(
+                "⚠️ Divisions were introduced in Season 24.\n"
+                "Showing the full table instead.",
+                ephemeral=True,
+            )
+            division = "All"
+
+        # -------- Fetch data once --------
+        if season_int == 99:
+            raw_data = DEMO_STANDINGS_DATA
+            error_msg = None
+            logger.info("Using DEMO standings data for Season 99")
+        else:
+            raw_data, error_msg = await asyncio.to_thread(
                 self.getstandingsdataseason,
                 season,
                 league_id,
-                div_value,
-            )
-            if error_msg:
-                await interaction.followup.send(
-                    f"Error fetching standings: {error_msg}", ephemeral=True
-                )
-                return
+        )
 
-            if not standings_data:
-                div_text = f" Division {division}" if div_value else ""
-                await interaction.followup.send(
-                    f"No standings data found for {league.title()}{div_text} Season {season}.",
-                    ephemeral=True,
-                )
-                return
-
-            league_title = (
-                f"{league.title()} Division {division}" if div_value else league.title()
+        if error_msg:
+            await interaction.followup.send(
+                f"Error fetching standings: {error_msg}",
+                ephemeral=True,
             )
-            # Single-table image: no default logo/title
+            return
+
+        if not raw_data:
+            await interaction.followup.send(
+                f"No standings data found for {league.title()} Season {season}.",
+                ephemeral=True,
+            )
+            return
+
+        standings = self.normalize_standings(raw_data)
+
+        league_type_expected = LEAGUEIDMAPPING.get(league_name_lower)
+
+        standings = [
+            t for t in standings
+            if t["league_type"] == league_type_expected
+        ]
+
+        # -------- Split by division --------
+        div1 = [t for t in standings if t["division"] == "1"]
+        div2 = [t for t in standings if t["division"] == "2"]
+        no_div = [t for t in standings if t["division"] == "ALL"]
+
+        division = division.lower()
+
+        # -------- Routing logic --------
+        if not has_divisions:
             image_bytes = await asyncio.to_thread(
                 self.create_standings_image,
-                standings_data,
-                league_title,
+                standings,
+                league.title(),
                 season,
-                False,  # show_header=False
+                False,
+                True,
+                False,
+                True,
             )
-
-        else:
-            # Case 2: S24+ and no division -> fetch both division 1 and 2
-            standings_div1, err1 = await asyncio.to_thread(
-                self.getstandingsdataseason,
-                season,
-                league_id,
-                1,
-            )
-            standings_div2, err2 = await asyncio.to_thread(
-                self.getstandingsdataseason,
-                season,
-                league_id,
-                2,
-            )
-            if err1 or err2:
-                await interaction.followup.send(
-                    f"Error fetching standings: {err1 or err2}", ephemeral=True
-                )
-                return
-            if not standings_div1 and not standings_div2:
-                await interaction.followup.send(
-                    f"No standings data found for {league.title()} Season {season}.",
-                    ephemeral=True,
-                )
-                return
-
-            # Two-division image: single centered title, no default logo
+        elif division == "all":
             image_bytes = await asyncio.to_thread(
                 self.create_two_divisions_image,
-                standings_div1,
-                standings_div2,
+                div1,
+                div2,
                 league.title(),
                 season,
             )
+        elif division == "1":
+            image_bytes = await asyncio.to_thread(
+                self.create_standings_image,
+                div1,
+                f"{league.title()} Division 1",
+                season,
+                False,
+                True,
+                False,
+                False,
+            )
+
+        elif division == "2":
+            image_bytes = await asyncio.to_thread(
+                self.create_standings_image,
+                div2,
+                f"{league.title()} Division 2",
+                season,
+                False,
+                True,
+                False,
+                False,
+            )
+
+        else:
+            await interaction.followup.send(
+                "Invalid division option. Use 1, 2, or All.",
+                ephemeral=True,
+            )
+            return
 
         if not image_bytes:
             await interaction.followup.send(
-                "Failed to generate standings image.", ephemeral=True
+                "Failed to generate standings image.",
+                ephemeral=True,
             )
             return
 
         file = discord.File(fp=image_bytes, filename="standings.png")
+
         eastern = pytz.timezone("US/Eastern")
         now_et = datetime.datetime.now(eastern)
 
+        if division == "1":
+            embed_title = f"{league.title()} Division 1 Standings - Season {season}"
+        elif division == "2":
+            embed_title = f"{league.title()} Division 2 Standings - Season {season}"
+        else:
+            embed_title = f"{league.title()} Standings - Season {season}"
         embed = discord.Embed(
-            title=f"{league.title()} Standings - Season {season}",
+            title=embed_title,
             color=discord.Color.purple(),
             timestamp=now_et,
         )
         embed.set_image(url="attachment://standings.png")
+
         await interaction.followup.send(embed=embed, file=file)
 
-    # ---------- DATA FETCHING ----------
-    def getstandingsdataseason(
-        self, season: str, league: int, division: Optional[int] = None
-    ):
-        if division is not None and int(season) >= 24:
-            url = f"{STANDINGSAPIBASEURL}?season={season}&league={league}&division={division}"
-        else:
-            url = f"{STANDINGSAPIBASEURL}?season={season}&league={league}"
+    # ---------------- DATA FETCH ----------------
+    def getstandingsdataseason(self, season: str, league: int):
+        url = f"{STANDINGSAPIBASEURL}?season={season}&league={league}"
         try:
             response = requests.get(url)
             response.raise_for_status()
             return response.json(), None
         except requests.exceptions.HTTPError as e:
             return None, f"HTTP error {e.response.status_code}: {e.response.reason}"
-        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
-            return None, "Network issue: Unable to reach the standings API at this time."
         except requests.exceptions.RequestException as e:
             return None, f"Unexpected error occurred: {e}"
-        except ValueError as e:
-            return None, f"Error parsing standings data: {e}"
+
+    # ---------------- NORMALIZATION ----------------
+    def normalize_standings(self, raw_data):
+        normalized = []
+        for row in raw_data:
+            normalized.append({
+                "Team": row.get("team", NA_PLACEHOLDER),
+                "MatchesPlayed": row.get("mp", 0),
+                "Wins": row.get("w", 0),
+                "Draws": row.get("d", 0),
+                "Losses": row.get("l", 0),
+                "GoalsFor": row.get("gf", 0),
+                "GoalsAgainst": row.get("ga", 0),
+                "GoalDifference": row.get("gd", 0),
+                "Points": row.get("p", 0),
+                "division": row.get("matchday", "ALL"),
+                "league_type":  int(row.get("matchtype")),
+            })
+        return normalized
+
 
     # ---------- IMAGE GENERATION: SINGLE TABLE ----------
-    def create_standings_image(self, standings_data, league_name, season, show_header=True):
+    def create_standings_image(self, standings_data, league_name, season, show_header=False, show_trophy=True, table_only=False, show_side_label=True):
         try:
             # Theme and assets
             is_major = league_name.lower().startswith("major")
@@ -189,7 +252,16 @@ class Standings(commands.Cog):
             header_bg = (48, 48, 48)
             row_even = (38, 38, 38)
             row_odd = (26, 26, 26, 255)
-            top_row = accent_color + (100,)
+            top_row = (
+                int(accent_color[0] * 0.85),
+                int(accent_color[1] * 0.85),
+                int(accent_color[2] * 0.85),
+                120,
+            )
+            # Promotion / relegation colors (S24+ only)
+            promotion_green = (39, 174, 96, 120)   # Clean green
+            playoff_blue = (41, 128, 185, 120)      # Clear blue
+            relegation_red = (169, 50, 38, 120)     # Distinct from Minors red
 
             league_logo_path = MAJOR_LEAGUE_LOGO_PATH if is_major else MINOR_LEAGUE_LOGO_PATH
 
@@ -223,135 +295,121 @@ class Standings(commands.Cog):
             col_widths = {col[0]: col[1] for col in columns}
             total_width = sum(w for _, w, _, _ in columns) + padding * 2
             num_rows = len(standings_data)
+            # Division detection
+            is_division_1 = "division 1" in league_name.lower()
+            is_division_2 = "division 2" in league_name.lower()
             total_height = 100 + (row_height * (num_rows + 1)) + padding * 2
 
+            canvas_width = total_width if table_only else total_width + 260
             image = Image.new(
-                "RGBA", (total_width + 260, total_height + 40), bg_dark
+                "RGBA", (canvas_width, total_height + 40), bg_dark
             )
             draw = ImageDraw.Draw(image)
 
             # Gradient background
-            for y in range(image.height):
-                ratio = y / image.height
-                r = int(accent_color[0] * (1 - ratio) + gradient_end[0] * ratio)
-                g = int(accent_color[1] * (1 - ratio) + gradient_end[1] * ratio)
-                b = int(accent_color[2] * (1 - ratio) + gradient_end[2] * ratio)
-                draw.line([(0, y), (image.width, y)], fill=(r, g, b, 255))
+            if not table_only:
+                for y in range(image.height):
+                    ratio = y / image.height
+                    r = int(accent_color[0] * (1 - ratio) + gradient_end[0] * ratio)
+                    g = int(accent_color[1] * (1 - ratio) + gradient_end[1] * ratio)
+                    b = int(accent_color[2] * (1 - ratio) + gradient_end[2] * ratio)
+                    draw.line([(0, y), (image.width, y)], fill=(r, g, b, 255))
 
-            # League badge + title only if requested
-            if show_header:
-                try:
-                    badge = Image.open(DEFAULT_LOGO_PATH).convert("RGBA")
-                    badge = badge.resize((88, 88), Image.Resampling.LANCZOS)
-                    image.paste(badge, (30, 30), badge)
-                except Exception:
-                    pass
-
-                title_text = f"{league_name} League Table"
-                bbox = draw.textbbox((0, 0), title_text, font=title_font)
-                tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
-                table_center_x = padding + total_width // 2
-                draw.text(
-                    (table_center_x - tw // 2, 38),
-                    title_text,
-                    font=title_font,
-                    fill="#ffffff",
-                )
 
             # Trophy + vertical label
-            trophy_panel_x = total_width + 40
-            trophy_panel_y = total_height - 360
-            trophy_panel_w, trophy_panel_h = 200, 340
+            if show_trophy and not table_only:
+                trophy_panel_x = total_width + 40
+                trophy_panel_y = total_height - 360
+                trophy_panel_w, trophy_panel_h = 200, 340
 
-            try:
-                trophy = Image.open(league_logo_path).convert("RGBA")
+                try:
+                    trophy = Image.open(league_logo_path).convert("RGBA")
 
-                tr_w, tr_h = trophy.size
-                scale = min(trophy_panel_w / tr_w, trophy_panel_h / tr_h)
-                new_w, new_h = int(tr_w * scale), int(tr_h * scale)
-                trophy = trophy.resize((new_w, new_h), Image.Resampling.LANCZOS)
+                    tr_w, tr_h = trophy.size
+                    scale = min(trophy_panel_w / tr_w, trophy_panel_h / tr_h)
+                    new_w, new_h = int(tr_w * scale), int(tr_h * scale)
+                    trophy = trophy.resize((new_w, new_h), Image.Resampling.LANCZOS)
 
-                center_x = trophy_panel_x + (trophy_panel_w - new_w) // 2
-                center_y = trophy_panel_y + (trophy_panel_h - new_h) // 2
+                    center_x = trophy_panel_x + (trophy_panel_w - new_w) // 2
+                    center_y = trophy_panel_y + (trophy_panel_h - new_h) // 2
 
-                # Shadow from trophy shape
-                shadow = Image.new("RGBA", trophy.size, (0, 0, 0, 0))
-                shadow_mask = trophy.split()[3]
-                shadow.paste((0, 0, 0, 180), mask=shadow_mask)
-                shadow = shadow.filter(ImageFilter.GaussianBlur(radius=6))
-                sx = center_x + 8
-                sy = center_y + 8
-                image.paste(shadow, (sx, sy), shadow)
+                    # Shadow from trophy shape
+                    shadow = Image.new("RGBA", trophy.size, (0, 0, 0, 0))
+                    shadow_mask = trophy.split()[3]
+                    shadow.paste((0, 0, 0, 180), mask=shadow_mask)
+                    shadow = shadow.filter(ImageFilter.GaussianBlur(radius=6))
+                    sx = center_x + 8
+                    sy = center_y + 8
+                    image.paste(shadow, (sx, sy), shadow)
 
-                image.paste(trophy, (center_x, center_y), trophy)
+                    image.paste(trophy, (center_x, center_y), trophy)
 
-                # Vertical MAJORS/MINORS label, dynamic based on rotated size
-                side_label = "MAJORS" if is_major else "MINORS"
+                    # Vertical MAJORS/MINORS label, dynamic based on rotated size
+                    if show_side_label:
+                        side_label = "MAJORS" if is_major else "MINORS"
 
-                label_top_limit = 20
-                label_bottom_limit = center_y - 10
-                available_height = max(60, label_bottom_limit - label_top_limit)
+                    label_top_limit = 20
+                    label_bottom_limit = center_y - 10
+                    available_height = max(60, label_bottom_limit - label_top_limit)
 
-                min_size = 16
-                max_size = 110
-                chosen_font = ImageFont.load_default()
-                chosen_label_img = None
+                    min_size = 16
+                    max_size = 110
+                    chosen_font = ImageFont.load_default()
+                    chosen_label_img = None
 
-                for size in range(min_size, max_size + 1):
-                    test_font = ImageFont.truetype(
-                        DEFAULT_FONT_PATH, size
-                    ) if DEFAULT_FONT_PATH else ImageFont.load_default()
+                    for size in range(min_size, max_size + 1):
+                        test_font = ImageFont.truetype(
+                            DEFAULT_FONT_PATH, size
+                        ) if DEFAULT_FONT_PATH else ImageFont.load_default()
 
-                    tmp_draw = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
-                    tbbox = tmp_draw.textbbox((0, 0), side_label, font=test_font)
-                    lw, lh = tbbox[2] - tbbox[0], tbbox[3] - tbbox[1]
+                        tmp_draw = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
+                        tbbox = tmp_draw.textbbox((0, 0), side_label, font=test_font)
+                        lw, lh = tbbox[2] - tbbox[0], tbbox[3] - tbbox[1]
 
-                    temp_label = Image.new("RGBA", (lw, lh), (0, 0, 0, 0))
-                    temp_draw = ImageDraw.Draw(temp_label)
-                    darker_accent = tuple(max(0, int(c * 0.6)) for c in accent_color)
-                    temp_draw.text(
-                        (0, 0),
-                        side_label,
-                        font=test_font,
-                        fill=(*darker_accent, int(255 * 0.4)),
-                    )
+                        temp_label = Image.new("RGBA", (lw, lh), (0, 0, 0, 0))
+                        temp_draw = ImageDraw.Draw(temp_label)
+                        darker_accent = tuple(max(0, int(c * 0.6)) for c in accent_color)
+                        temp_draw.text(
+                            (0, 0),
+                            side_label,
+                            font=test_font,
+                            fill=(*darker_accent, int(255 * 0.4)),
+                        )
+                        rotated = temp_label.rotate(-90, expand=True)
+                        rotated_h = rotated.height
 
-                    rotated = temp_label.rotate(-90, expand=True)
-                    rotated_h = rotated.height
+                        if rotated_h <= available_height:
+                            chosen_font = test_font
+                            chosen_label_img = rotated
+                        else:
+                            break
+                    if chosen_label_img is None:
+                        fallback_font = ImageFont.truetype(
+                            DEFAULT_FONT_PATH, 20
+                        ) if DEFAULT_FONT_PATH else ImageFont.load_default()
+                        tmp_draw = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
+                        tbbox = tmp_draw.textbbox((0, 0), side_label, font=fallback_font)
+                        lw, lh = tbbox[2] - tbbox[0], tbbox[3] - tbbox[1]
+                        temp_label = Image.new("RGBA", (lw, lh), (0, 0, 0, 0))
+                        temp_draw = ImageDraw.Draw(temp_label)
+                        darker_accent = tuple(max(0, int(c * 0.6)) for c in accent_color)
+                        temp_draw.text(
+                            (0, 0),
+                            side_label,
+                            font=fallback_font,
+                            fill=(*darker_accent, int(255 * 0.4)),
+                        )
+                        chosen_label_img = temp_label.rotate(-90, expand=True)
 
-                    if rotated_h <= available_height:
-                        chosen_font = test_font
-                        chosen_label_img = rotated
-                    else:
-                        break
+                    label_img = chosen_label_img
+                    lx = trophy_panel_x + (trophy_panel_w - label_img.width) // 2
+                    ly = label_bottom_limit - label_img.height
+                    if ly < 10:
+                        ly = 10
+                    image.paste(label_img, (lx, ly), label_img)
 
-                if chosen_label_img is None:
-                    fallback_font = ImageFont.truetype(
-                        DEFAULT_FONT_PATH, 20
-                    ) if DEFAULT_FONT_PATH else ImageFont.load_default()
-                    tmp_draw = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
-                    tbbox = tmp_draw.textbbox((0, 0), side_label, font=fallback_font)
-                    lw, lh = tbbox[2] - tbbox[0], tbbox[3] - tbbox[1]
-                    temp_label = Image.new("RGBA", (lw, lh), (0, 0, 0, 0))
-                    temp_draw = ImageDraw.Draw(temp_label)
-                    darker_accent = tuple(max(0, int(c * 0.6)) for c in accent_color)
-                    temp_draw.text(
-                        (0, 0),
-                        side_label,
-                        font=fallback_font,
-                        fill=(*darker_accent, int(255 * 0.4)),
-                    )
-                    chosen_label_img = temp_label.rotate(-90, expand=True)
-
-                label_img = chosen_label_img
-                lx = trophy_panel_x + (trophy_panel_w - label_img.width) // 2
-                ly = label_bottom_limit - label_img.height
-                if ly < 10:
-                    ly = 10
-                image.paste(label_img, (lx, ly), label_img)
-
-            except Exception as e:
-                logger.error(f"Error loading trophy or drawing side label: {e}")
+                except Exception as e:
+                    logger.error(f"Error loading trophy or drawing side label: {e}")
 
             # Header row
             header_y = 80
@@ -383,9 +441,26 @@ class Standings(commands.Cog):
             current_y = header_y + row_height
             for idx, team_stats in enumerate(standings_data):
                 x = padding
+                #Default row background
                 row_bg = top_row if idx == 0 else (
                     row_even if idx % 2 == 0 else row_odd
                 )
+                # Promotion / Relegation logic (S24+ only)
+                if season.isdigit() and int(season) >= 24:
+                    position = idx + 1
+
+                # Division 2 rules
+                if is_division_2:
+                    if position == 1:
+                        row_bg = promotion_green
+                    elif position == 2:
+                        row_bg = playoff_blue
+                # Division 1 rules
+                if is_division_1:
+                    if position == num_rows:
+                        row_bg = relegation_red
+                    elif position == num_rows - 1:
+                        row_bg = playoff_blue
                 draw.rectangle(
                     [padding, current_y, total_width + padding, current_y + row_height],
                     fill=row_bg,
@@ -487,10 +562,10 @@ class Standings(commands.Cog):
     ):
         # Generate bare tables (no header/logo inside each, no trophy panel)
         img1_bytes = self.create_standings_image(
-            standings_div1, f"{league_name} Division 1", season, show_header=False
+            standings_div1, f"{league_name} Division 1", season, show_header=False, show_trophy=False, table_only=True, show_side_label=False,
         )
         img2_bytes = self.create_standings_image(
-            standings_div2, f"{league_name} Division 2", season, show_header=False
+            standings_div2, f"{league_name} Division 2", season, show_header=False, show_trophy=False, table_only=True, show_side_label=False,
         )
         if not img1_bytes or not img2_bytes:
             return None
@@ -510,10 +585,14 @@ class Standings(commands.Cog):
             title_font = ImageFont.truetype(DEFAULT_FONT_PATH, 52)
             header_font = ImageFont.truetype(DEFAULT_FONT_PATH, 28)
             row_font = ImageFont.truetype(DEFAULT_FONT_PATH, 22)
+            division_font = ImageFont.truetype(DEFAULT_FONT_PATH, 32)
         except Exception:
             title_font = ImageFont.load_default()
             header_font = ImageFont.load_default()
             row_font = ImageFont.load_default()
+            division_font = ImageFont.load_default()
+
+        LEFT_MARGIN = 20    
 
         # Table dimensions (match single table)
         logo_size = 48
@@ -535,9 +614,9 @@ class Standings(commands.Cog):
         total_width = sum(w for _, w, _, _ in columns) + padding * 2
 
         # Height reserved for the single global title
-        header_height = 140
+        header_height = 30
         width = total_width + 260  # Match single table width (table + trophy panel)
-        height = header_height + img1.height + img2.height
+        height = header_height + img1.height + img2.height + 100
 
         combined = Image.new("RGBA", (width, height), bg_dark)
         draw = ImageDraw.Draw(combined)
@@ -550,21 +629,39 @@ class Standings(commands.Cog):
             b = int(accent_color[2] * (1 - ratio) + gradient_end[2] * ratio)
             draw.line([(0, y), (combined.width, y)], fill=(r, g, b, 255))
 
-        # Title-only header (no default logo)
-        title_text = f"{league_name} League Table"
-        bbox = draw.textbbox((0, 0), title_text, font=title_font)
-        tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
-        draw.text(
-            ((width - tw) // 2, (header_height - th) // 2),
-            title_text,
-            font=title_font,
-            fill="#ffffff",
-        )
 
         # Paste the two division tables below the header (aligned left)
-        combined.paste(img1, (0, header_height), img1)
-        combined.paste(img2, (0, header_height + img1.height), img2)
+        # --- Division 1 label ---
+        d1_text = "Division 1"
+        bbox = draw.textbbox((0, 0), d1_text, font=division_font)
+        tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
 
+        d1_y = header_height
+        draw.text(
+            (LEFT_MARGIN + (total_width - tw) // 2, d1_y),
+            d1_text,
+            font=division_font,
+            fill="white",
+        )   
+        # Paste Division 1 table
+        combined.paste(img1, (LEFT_MARGIN, d1_y + th + 10), img1)
+
+        # --- Division 2 label ---
+        d2_text = "Division 2"
+        bbox = draw.textbbox((0, 0), d2_text, font=division_font)
+        tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+
+        d2_y = d1_y + th + 10 + img1.height + 20
+        draw.text(
+            (LEFT_MARGIN + (total_width - tw) // 2, d2_y),
+            d2_text,
+            font=division_font,
+            fill="white",
+        )
+        # Paste Division 2 table
+        combined.paste(img2, (LEFT_MARGIN, d2_y + th + 10), img2)
+
+        
         # Single trophy + vertical label positioned relative to combined tables
         # trophy_panel_x and trophy_panel_y match single table positioning logic
         trophy_panel_x = total_width + 40
