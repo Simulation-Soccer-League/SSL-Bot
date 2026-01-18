@@ -15,6 +15,7 @@ load_dotenv(".secrets/.env")
 TEST_ID = int(os.getenv("DISCORD_TEST_ID"))
 
 from utils import (
+    MAJORS_DIV2_LOGO_PATH,
     STANDINGSAPIBASEURL,
     DEFAULT_FONT_PATH,
     NA_PLACEHOLDER,
@@ -24,6 +25,10 @@ from utils import (
     DEFAULT_LOGO_PATH,
     MAJOR_LEAGUE_LOGO_PATH,
     MINOR_LEAGUE_LOGO_PATH,
+    MAJORS_DIV1_LOGO_PATH,
+    MINORS_DIV1_LOGO_PATH,
+    MAJORS_DIV2_LOGO_PATH,
+    MINORS_DIV2_LOGO_PATH,
     DEMO_STANDINGS_DATA,
 )
 
@@ -33,6 +38,29 @@ logger = logging.getLogger(__name__)
 class Standings(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+
+        #Returns the correct logo path based on league + division
+
+    def get_league_logo_path(self, league_name: str):
+        lname = league_name.lower()
+
+        is_major = lname.startswith("major")
+        is_div1 = "division 1" in lname
+        is_div2 = "division 2" in lname
+
+        if is_major:
+            if is_div1:
+                return MAJORS_DIV1_LOGO_PATH
+            if is_div2:
+                return MAJORS_DIV2_LOGO_PATH
+            return MAJOR_LEAGUE_LOGO_PATH
+        else:
+            if is_div1:
+                return MINORS_DIV1_LOGO_PATH
+            if is_div2:
+                return MINORS_DIV2_LOGO_PATH
+            return MINOR_LEAGUE_LOGO_PATH
+    
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -49,6 +77,8 @@ class Standings(commands.Cog):
         season="Season number (e.g. 24)",
         division="Division to show: 1, 2, or All (S24+ only)",
     )
+
+
     async def leaguestandings(
         self,
         interaction: discord.Interaction,
@@ -263,7 +293,7 @@ class Standings(commands.Cog):
             playoff_blue = (41, 128, 185, 120)      # Clear blue
             relegation_red = (169, 50, 38, 120)     # Distinct from Minors red
 
-            league_logo_path = MAJOR_LEAGUE_LOGO_PATH if is_major else MINOR_LEAGUE_LOGO_PATH
+            league_logo_path = self.get_league_logo_path(league_name)
 
             # Fonts
             try:
@@ -578,7 +608,12 @@ class Standings(commands.Cog):
         accent_color = (218, 185, 45) if is_major else (176, 40, 49)
         bg_dark = (30, 30, 30)
         gradient_end = (46, 46, 46)
-        league_logo_path = MAJOR_LEAGUE_LOGO_PATH if is_major else MINOR_LEAGUE_LOGO_PATH
+        league_logo_path = (
+            MAJOR_LEAGUE_LOGO_PATH
+            if league_name.lower().startswith("major")
+            else MINOR_LEAGUE_LOGO_PATH
+        )
+
 
         # Fonts
         try:

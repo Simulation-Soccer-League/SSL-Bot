@@ -54,6 +54,10 @@ CURRENT_SEASON = "23"
 DEFAULT_LOGO_PATH = "./graphics/logos/league-logo.png"  
 MAJOR_LEAGUE_LOGO_PATH = "./graphics/logos/major_league_logo.png"
 MINOR_LEAGUE_LOGO_PATH = "./graphics/logos/minor_league_logo.png"
+MAJORS_DIV1_LOGO_PATH = "./graphics/logos/majors_div1.png"
+MAJORS_DIV2_LOGO_PATH = "./graphics/logos/majors_div2.png"
+MINORS_DIV1_LOGO_PATH = "./graphics/logos/minors_div1.png"
+MINORS_DIV2_LOGO_PATH = "./graphics/logos/minors_div2.png"
 
 def get_team_logo_path(team_name): # Returns the file path for the team logo image based on the team name.
     
@@ -73,6 +77,7 @@ def get_team_logo_path(team_name): # Returns the file path for the team logo ima
 
 MAJOR_TROPHY_PATH= "./graphics/trophies/SSL_Major_Trophy_Front.png"
 MINOR_TROPHY_PATH= "./graphics/trophies/SSL_Minor_Trophy_Front.png"
+
 
 DEMO_STANDINGS_DATA = [
     {
