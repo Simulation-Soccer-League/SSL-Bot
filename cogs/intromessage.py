@@ -79,7 +79,7 @@ class IntroMessage(commands.Cog):
             welcome_message = (
                 f"Hey {member.name}! Welcome to {member.guild.name}!\n\n"
                 f"The SSL is a simulation league within the world of soccer/football." 
-                f"league takes the Be-a-pro game mode to a multiplayer environment where"
+                f"The league takes the Be-a-pro game mode to a multiplayer environment where"
                 f"users from across the globe create their own player, join one of the teams,"
                 f"fight for the league or cup championships and watch commentated games"
                 f"simulated through Football Manager.\n\n"
