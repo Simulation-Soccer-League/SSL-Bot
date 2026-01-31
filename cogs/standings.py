@@ -113,7 +113,11 @@ class Standings(commands.Cog):
                 ephemeral=True,
             )
             division = "All"
-
+        try:
+            import asyncio
+        except ImportError as e:
+            print("NOT EXIST")
+            pass  # module doesn't exist, deal with it.
         # -------- Fetch data once --------
         if season_int == 99:
             raw_data = DEMO_STANDINGS_DATA
