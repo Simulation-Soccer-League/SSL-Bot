@@ -146,7 +146,7 @@ class Standings(commands.Cog):
 
         standings = self.normalize_standings(raw_data)
         
-        print("Loaded standings")
+        logger.info("Loaded standings")
         
         league_type_expected = LEAGUEIDMAPPING.get(league_name_lower)
 
@@ -163,7 +163,7 @@ class Standings(commands.Cog):
         division = division.lower()
 
 
-        print("Split by division")
+        logger.info("Split by division")
         # -------- Routing logic --------
         if not has_divisions:
             image_bytes = await asyncio.to_thread(
@@ -236,7 +236,7 @@ class Standings(commands.Cog):
         )
         embed.set_image(url="attachment://standings.png")
         
-        print("Sent standing image")
+        logger.info("Sent standing image")
         
         await interaction.followup.send(embed=embed, file=file)
 
