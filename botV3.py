@@ -9,8 +9,8 @@ from db_utils import *
 load_dotenv('.secrets/.env') # load all the variables from the env file
 TOKEN = os.getenv('DISCORD_V3_TOKEN')
 OWNER_ID = int(os.getenv('DISCORD_OWNER'))
-TEST_ID = int(os.getenv('DISCORD_TEST_ID'))
-TEST_SERVER_OWNER_ID = int(os.getenv('TEST_SERVER_OWNER_ID'))
+# TEST_ID = int(os.getenv('DISCORD_TEST_ID'))
+# TEST_SERVER_OWNER_ID = int(os.getenv('TEST_SERVER_OWNER_ID'))
 
 bot = commands.Bot(command_prefix="/", intents=discord.Intents.all())
 
@@ -19,11 +19,11 @@ async def on_ready():
     print("The Bot is now ready!")
     try: 
         ## Use this when testing
-        guild = discord.Object(id=TEST_ID)
-        synced_commands = await bot.tree.sync(guild=guild)
+        # guild = discord.Object(id=TEST_ID)
+        # synced_commands = await bot.tree.sync(guild=guild)
         
         ## Use this for public
-        # synced_commands = await bot.tree.sync()
+        synced_commands = await bot.tree.sync()
         print(f"Synced {len(synced_commands)} commands.")
     except Exception as e:
         print("An error with syncing application commands has occurred. ", e)
@@ -79,7 +79,7 @@ async def whoami(interaction: discord.Interaction):
 
 
 @bot.tree.command(name="reload", description="Reloading named cogs")
-@discord.app_commands.guilds(discord.Object(id=TEST_ID))
+# @discord.app_commands.guilds(discord.Object(id=TEST_ID))
 async def reload(interaction: discord.Interaction, extension: str):
         await bot.unload_extension(f'cogs.{extension}')
         await bot.load_extension(f'cogs.{extension}')

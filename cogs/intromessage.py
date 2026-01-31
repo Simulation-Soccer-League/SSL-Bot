@@ -16,7 +16,7 @@ SSL_HELP_CHANNEL_ID = int(os.getenv("SSL_MAIN_SERVER_SSL_HELP_CHANNEL"))
 SSL_NEW_PLAYER_GUIDE_CHANNEL_ID = int(os.getenv("SSL_MAIN_SERVER_NEW_PLAYER_GUIDE_CHANNEL"))
 SSL_BOD_ROLE_ID = int(os.getenv("SSL_MAIN_SERVER_BOD_ROLE_ID"))
 SSL_ACADEMY_COACHES_ROLE_ID = int(os.getenv("SSL_MAIN_SERVER_ACADEMY_COACHES_ROLE_ID"))
-TEST_ID = int(os.getenv('DISCORD_TEST_ID'))
+# TEST_ID = int(os.getenv('DISCORD_TEST_ID'))
 
 
 
@@ -25,14 +25,14 @@ class IntroMessage(commands.Cog):
         self.bot = bot
         
     @app_commands.command(name='test_join', description='Simulates a member joining')
-    @discord.app_commands.guilds(discord.Object(id=TEST_ID))
+    # @discord.app_commands.guilds(discord.Object(id=TEST_ID))
     async def test_join(self, interaction: discord.Interaction):
         await interaction.response.defer()
         await self.on_member_join(interaction.user)
         await interaction.followup.send("Simulated join event triggered.")
         
     @app_commands.command(name='toggle_welcome', description='Toggles the activation of the welcome message in the server')
-    @discord.app_commands.guilds(discord.Object(id=TEST_ID))
+    # @discord.app_commands.guilds(discord.Object(id=TEST_ID)) # Removed to have it accessible for all servers
     async def toggle_welcome(self, interaction: discord.Interaction):
         # Check if user has admin permissions
         if not interaction.user.guild_permissions.administrator:

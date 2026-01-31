@@ -12,7 +12,7 @@ import os
 import pytz
 
 load_dotenv(".secrets/.env")
-TEST_ID = int(os.getenv("DISCORD_TEST_ID"))
+# TEST_ID = int(os.getenv("DISCORD_TEST_ID"))
 
 from utils import (
     MAJORS_DIV2_LOGO_PATH,
@@ -71,7 +71,7 @@ class Standings(commands.Cog):
         name="leaguestandings",
         description="Get the standings for the specified league",
     )
-    @app_commands.guilds(discord.Object(id=TEST_ID))
+    # @app_commands.guilds(discord.Object(id=TEST_ID))
     @app_commands.describe(
         league="Majors or Minors",
         season="Season number (e.g. 24)",

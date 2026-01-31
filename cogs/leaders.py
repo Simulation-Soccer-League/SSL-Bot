@@ -11,7 +11,7 @@ from utils import DEFAULT_FONT_PATH
 from dotenv import load_dotenv
 import os # default module
 
-TEST_ID = int(os.getenv('DISCORD_TEST_ID'))
+# TEST_ID = int(os.getenv('DISCORD_TEST_ID'))
 
 def generate_stat_sheet_image(data, leader):
     #Prepare Data
