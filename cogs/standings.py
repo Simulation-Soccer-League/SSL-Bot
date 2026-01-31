@@ -120,7 +120,7 @@ class Standings(commands.Cog):
             )
             return
 
-        print("Loaded standings")
+        # print("Loaded standings")
         
         # -------- Split by division --------
         div1 = standings_data[standings_data['matchday'] == "1"]
@@ -129,7 +129,7 @@ class Standings(commands.Cog):
 
         division = division.lower()
 
-        print("Split by division")
+        # print("Split by division")
         # -------- Routing logic --------
         
         if not has_divisions:
@@ -148,7 +148,7 @@ class Standings(commands.Cog):
           )
           return
         
-        print("Separates data")
+        # print("Separates data")
                 
         if division == "all" and has_divisions:
           image_bytes = self.create_two_divisions_image(
@@ -160,7 +160,7 @@ class Standings(commands.Cog):
         else: 
           image_bytes = self.create_standings_image(data, title, season, False, True, False, True)
 
-        print("Creates an image")
+        # print("Creates an image")
         if not image_bytes:
             await interaction.followup.send(
                 "Failed to generate standings image.",
@@ -168,7 +168,7 @@ class Standings(commands.Cog):
             )
             return
 
-        print("Generated image")
+        # print("Generated image")
 
         file = discord.File(fp=image_bytes, filename="standings.png")
 
@@ -184,7 +184,7 @@ class Standings(commands.Cog):
         )
         embed.set_image(url="attachment://standings.png")
         
-        print("Sent standing image")
+        # print("Sent standing image")
         
         await interaction.followup.send(embed=embed, file=file)
 
