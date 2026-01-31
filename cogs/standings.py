@@ -6,7 +6,6 @@ import asyncio
 import datetime
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import io
-import logging
 from dotenv import load_dotenv
 import os
 
@@ -30,9 +29,6 @@ from utils import (
     MINORS_DIV2_LOGO_PATH,
     DEMO_STANDINGS_DATA,
 )
-
-logger = logging.getLogger(__name__)
-
 
 class Standings(commands.Cog):
     def __init__(self, bot):
@@ -122,7 +118,7 @@ class Standings(commands.Cog):
         if season_int == 99:
             raw_data = DEMO_STANDINGS_DATA
             error_msg = None
-            logger.info("Using DEMO standings data for Season 99")
+            print("Using DEMO standings data for Season 99")
         else:
             raw_data, error_msg = await asyncio.to_thread(
                 self.getstandingsdataseason,
@@ -146,7 +142,7 @@ class Standings(commands.Cog):
 
         standings = self.normalize_standings(raw_data)
         
-        logger.info("Loaded standings")
+        print("Loaded standings")
         
         league_type_expected = LEAGUEIDMAPPING.get(league_name_lower)
 
@@ -163,7 +159,7 @@ class Standings(commands.Cog):
         division = division.lower()
 
 
-        logger.info("Split by division")
+        print("Split by division")
         # -------- Routing logic --------
         if not has_divisions:
             image_bytes = await asyncio.to_thread(
@@ -236,7 +232,7 @@ class Standings(commands.Cog):
         )
         embed.set_image(url="attachment://standings.png")
         
-        logger.info("Sent standing image")
+        print("Sent standing image")
         
         await interaction.followup.send(embed=embed, file=file)
 
@@ -440,7 +436,7 @@ class Standings(commands.Cog):
                     image.paste(label_img, (lx, ly), label_img)
 
                 except Exception as e:
-                    logger.error(f"Error loading trophy or drawing side label: {e}")
+                    print(f"Error loading trophy or drawing side label: {e}")
 
             # Header row
             header_y = 80
@@ -578,7 +574,7 @@ class Standings(commands.Cog):
             buf.seek(0)
             return buf
         except Exception as e:
-            logger.error(
+            print(
                 f"Error creating standings image for {league_name} Season {season}: {e}"
             )
             return None
@@ -793,7 +789,7 @@ class Standings(commands.Cog):
             combined.paste(label_img, (lx, ly), label_img)
 
         except Exception as e:
-            logger.error(f"Error loading trophy or drawing side label: {e}")
+            print(f"Error loading trophy or drawing side label: {e}")
 
         out = io.BytesIO()
         combined.save(out, format="PNG")
