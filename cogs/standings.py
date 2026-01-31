@@ -88,7 +88,7 @@ class Standings(commands.Cog):
     ):
         league_name_lower = league.lower()
         league_id = LEAGUEIDMAPPING.get(league_name_lower)
-
+        print(league_id)
         if league_id is None or league_id == 0:
             await interaction.response.send_message(
                 "Standings are only available for Majors and Minors leagues.",
@@ -109,7 +109,7 @@ class Standings(commands.Cog):
             return
         
         has_divisions = season_int >= 24
-
+        
         # -------- Enforce S24+ rule --------
         if season_int < 24 and division.lower() != "all":
             await interaction.followup.send(
@@ -146,7 +146,9 @@ class Standings(commands.Cog):
             return
 
         standings = self.normalize_standings(raw_data)
-
+        
+        print(standings)
+        
         league_type_expected = LEAGUEIDMAPPING.get(league_name_lower)
 
         standings = [
