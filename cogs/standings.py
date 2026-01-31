@@ -88,7 +88,7 @@ class Standings(commands.Cog):
     ):
         league_name_lower = league.lower()
         league_id = LEAGUEIDMAPPING.get(league_name_lower)
-        print(league_id)
+
         if league_id is None or league_id == 0:
             await interaction.response.send_message(
                 "Standings are only available for Majors and Minors leagues.",
@@ -147,7 +147,7 @@ class Standings(commands.Cog):
 
         standings = self.normalize_standings(raw_data)
         
-        print(standings)
+        print("Loaded standings")
         
         league_type_expected = LEAGUEIDMAPPING.get(league_name_lower)
 
@@ -163,6 +163,8 @@ class Standings(commands.Cog):
 
         division = division.lower()
 
+
+        print("Split by division")
         # -------- Routing logic --------
         if not has_divisions:
             image_bytes = await asyncio.to_thread(
@@ -225,7 +227,10 @@ class Standings(commands.Cog):
 
         eastern = pytz.timezone("US/Eastern")
         now_et = datetime.datetime.now(eastern)
-
+      
+        print("Set timezone")
+        
+        
         if division == "1":
             embed_title = f"{league.title()} Division 1 Standings - Season {season}"
         elif division == "2":
@@ -238,7 +243,9 @@ class Standings(commands.Cog):
             timestamp=now_et,
         )
         embed.set_image(url="attachment://standings.png")
-
+        
+        print("Sent standing image")
+        
         await interaction.followup.send(embed=embed, file=file)
 
     # ---------------- DATA FETCH ----------------
