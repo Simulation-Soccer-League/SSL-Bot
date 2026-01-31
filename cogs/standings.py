@@ -9,7 +9,6 @@ import io
 import logging
 from dotenv import load_dotenv
 import os
-import pytz
 
 load_dotenv(".secrets/.env")
 # TEST_ID = int(os.getenv("DISCORD_TEST_ID"))
@@ -225,12 +224,6 @@ class Standings(commands.Cog):
 
         file = discord.File(fp=image_bytes, filename="standings.png")
 
-        eastern = pytz.timezone("US/Eastern")
-        now_et = datetime.datetime.now(eastern)
-      
-        print("Set timezone")
-        
-        
         if division == "1":
             embed_title = f"{league.title()} Division 1 Standings - Season {season}"
         elif division == "2":
@@ -240,7 +233,6 @@ class Standings(commands.Cog):
         embed = discord.Embed(
             title=embed_title,
             color=discord.Color.purple(),
-            timestamp=now_et,
         )
         embed.set_image(url="attachment://standings.png")
         
