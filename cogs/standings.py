@@ -115,6 +115,7 @@ class Standings(commands.Cog):
             division = "All"
         try:
             import asyncio
+            print("EXIST")
         except ImportError as e:
             print("NOT EXIST")
             pass  # module doesn't exist, deal with it.
