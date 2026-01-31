@@ -5,8 +5,8 @@ DEFAULT_FONT_PATH = "./fonts/GOTHAM-BOLD.TTF"
 STANDINGSAPIBASEURL = "https://api.simulationsoccer.com/index/standings"
 NA_PLACEHOLDER = "N/A"
 LEAGUEIDMAPPING = {
-    "majors": 1,
-    "minors": 2,
+    "major": 1,
+    "minor": 2,
     "ssl cup": 0,
     "ssl shield": 0,  
 }

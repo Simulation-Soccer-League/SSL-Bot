@@ -16,7 +16,6 @@ bot = commands.Bot(command_prefix="/", intents=discord.Intents.all())
 
 @bot.event
 async def on_ready():
-    print("The Bot is now ready!")
     try: 
         ## Use this when testing
         # guild = discord.Object(id=TEST_ID)
@@ -25,6 +24,8 @@ async def on_ready():
         ## Use this for public
         synced_commands = await bot.tree.sync()
         print(f"Synced {len(synced_commands)} commands.")
+        
+        print("The Bot is now ready!")
     except Exception as e:
         print("An error with syncing application commands has occurred. ", e)
 

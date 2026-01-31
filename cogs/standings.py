@@ -73,7 +73,7 @@ class Standings(commands.Cog):
     )
     # @app_commands.guilds(discord.Object(id=TEST_ID))
     @app_commands.describe(
-        league="Majors or Minors",
+        league="Major or Minor",
         season="Season number (e.g. 24)",
         division="Division to show: 1, 2, or All (S24+ only)",
     )
@@ -113,7 +113,7 @@ class Standings(commands.Cog):
         # -------- Enforce S24+ rule --------
         if season_int < 24 and division.lower() != "all":
             await interaction.followup.send(
-                "⚠️ Divisions were introduced in Season 24.\n"
+                "Divisions were introduced in Season 24.\n"
                 "Showing the full table instead.",
                 ephemeral=True,
             )
