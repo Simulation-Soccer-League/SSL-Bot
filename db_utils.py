@@ -16,6 +16,20 @@ def create_connection():
         print(e)
 
     return conn
+
+def create_welcome_table(conn):
+    """Create the welcomeMessage table if it doesn't exist."""
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS welcomeMessage (
+                guildID INTEGER PRIMARY KEY,
+                active INTEGER NOT NULL
+            )
+        """)
+        conn.commit()
+    except Exception as e:
+        print("Error creating welcomeMessage table:", e)
   
 ## Adds a new user row to the database
 def add_row(conn, data):
@@ -87,5 +101,30 @@ def get_discord_id(username):
             id = None
     session.close()
     return(id)
+  
+# Helper functions for toggle
+def get_welcome_status(guild_id: int) -> bool:
+    conn = create_connection()
+    
+    create_welcome_table(conn)
+    
+    with conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT active FROM welcomeMessage WHERE guildID = ?", (guild_id,))
+        row = cursor.fetchone()
+        return bool(row[0]) if row else False  # default to False if not set
 
+def set_welcome_status(guild_id: int, enabled: bool):
+    conn = create_connection()
+    
+    create_welcome_table(conn)
+    
+    with conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO welcomeMessage (guildID, active)
+            VALUES (?, ?)
+            ON CONFLICT(guildID) DO UPDATE SET active=excluded.active
+        """, (guild_id, int(enabled)))
+        conn.commit()
 
