@@ -12,7 +12,7 @@ import os
 import pytz
 
 load_dotenv(".secrets/.env")
-TEST_ID = int(os.getenv("DISCORD_TEST_ID"))
+# TEST_ID = int(os.getenv("DISCORD_TEST_ID"))
 
 from utils import (
     MAJORS_DIV2_LOGO_PATH,
