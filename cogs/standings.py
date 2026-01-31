@@ -239,9 +239,11 @@ class Standings(commands.Cog):
     # ---------------- DATA FETCH ----------------
     def getstandingsdataseason(self, season: str, league: int):
         url = f"{STANDINGSAPIBASEURL}?season={season}&league={league}"
+        print(url)
         try:
             response = requests.get(url)
             response.raise_for_status()
+            print(response)
             return response.json(), None
         except requests.exceptions.HTTPError as e:
             return None, f"HTTP error {e.response.status_code}: {e.response.reason}"
