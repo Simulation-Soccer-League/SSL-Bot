@@ -5,8 +5,8 @@ DEFAULT_FONT_PATH = "./fonts/GOTHAM-BOLD.TTF"
 STANDINGSAPIBASEURL = "https://api.simulationsoccer.com/index/standings"
 NA_PLACEHOLDER = "N/A"
 LEAGUEIDMAPPING = {
-    "majors": 1,
-    "minors": 2,
+    "major": 1,
+    "minor": 2,
     "ssl cup": 0,
     "ssl shield": 0,  
 }
@@ -49,7 +49,7 @@ TEAM_ABBREVIATIONS = {
     "msd" : "AF Masques Sacrés", "lif": "Liffeyside Celtic FC", "rmp": "CS Rova Mpanjaka", "rova": "CS Rova Mpanjaka"
 }
 
-CURRENT_SEASON = "23"
+CURRENT_SEASON = "24"
 
 DEFAULT_LOGO_PATH = "./graphics/logos/league-logo.png"  
 MAJOR_LEAGUE_LOGO_PATH = "./graphics/logos/major_league_logo.png"
