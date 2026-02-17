@@ -77,16 +77,16 @@ class IntroMessage(commands.Cog):
             academy_coaches_role_id = SSL_ACADEMY_COACHES_ROLE_ID
 
             welcome_message = (
-                f"Hey {member.name}! Welcome to {member.guild.name}!\n\n"
-                f"The SSL is a simulation league within the world of soccer/football." 
-                f"The league takes the Be-a-pro game mode to a multiplayer environment where"
-                f"users from across the globe create their own player, join one of the teams,"
-                f"fight for the league or cup championships and watch commentated games"
+                f"Hey {member.name}! Welcome to the {member.guild.name}!\n\n"
+                f"The SSL is a simulation league within the world of soccer/football. " 
+                f"The league takes the Be-a-pro game mode to a multiplayer environment where "
+                f"users from across the globe create their own player, join one of the teams, "
+                f"fight for the league or cup championships and watch commentated games "
                 f"simulated through Football Manager.\n\n"
-                f"Read more about how you can start your career in the" 
+                f"Read more about how you can start your career in the " 
                 f"<#{new_player_guide_channel_id}>.\n\n"
-                f"If you need any help you can contact any of the <@&{bod_role_id}> or" 
-                f"<@&{academy_coaches_role_id}>, and of course you can always ask question"
+                f"If you need any help you can contact any of the <@&{academy_coaches_role_id}> or" 
+                f"<@&{bod_role_id}>, and of course you can always ask question "
                 f"in <#{ssl_help_channel_id}>"
             )
         else:
@@ -113,9 +113,9 @@ class IntroMessage(commands.Cog):
 
         # Draw outline by drawing text shifted in four directions
         for dx, dy in offsets:
-            bg.text((x1 + dx, y1 + dy), f"Hello there folks!", font=font_big, color="#ffffff", align="center")
+            bg.text((x1 + dx, y1 + dy), f"Greetings!", font=font_big, color="#ffffff", align="center")
         # Draw main text on top
-        bg.text((x1, y1), f"Hello there folks!", font=font_big, color="#070B51", align="center")
+        bg.text((x1, y1), f"Greetings!", font=font_big, color="#070B51", align="center")
 
         x2, y2 = (960, 800) #Coordinates for the small member count text in image
         offset = 5

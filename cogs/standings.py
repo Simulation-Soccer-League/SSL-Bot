@@ -77,7 +77,7 @@ class Standings(commands.Cog):
         self,
         interaction: discord.Interaction,
         league: str,
-        season: int = int(CURRENT_SEASON),
+        season: int = CURRENT_SEASON,
         division: str = "All",
     ):
         league_name_lower = league.lower()
@@ -127,7 +127,9 @@ class Standings(commands.Cog):
         div2 = standings_data[standings_data['matchday'] == "2"].reset_index(drop=True)
         no_div = standings_data[standings_data['matchday'] == "ALL"].reset_index(drop=True)
 
+        # print("Split by division")
         # -------- Routing logic --------
+        
         if not has_divisions:
             data = standings_data
             title = league.title()
@@ -174,7 +176,7 @@ class Standings(commands.Cog):
             )
             return
 
-        file = discord.File(fp=image_bytes, filename="standings.png")
+        # print("Generated image")
 
         if division == "1":
             embed_title = f"{league.title()} Division 1 Standings - Season {season}"
@@ -188,7 +190,9 @@ class Standings(commands.Cog):
             color=discord.Color.purple(),
         )
         embed.set_image(url="attachment://standings.png")
-
+        
+        # print("Sent standing image")
+        
         await interaction.followup.send(embed=embed, file=file)
 
     # ---------- IMAGE GENERATION: SINGLE TABLE ----------
