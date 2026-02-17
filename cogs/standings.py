@@ -64,7 +64,7 @@ class Standings(commands.Cog):
 
     # ---------------- COMMAND ----------------
     @app_commands.command(
-        name="leaguestandings_test",
+        name="leaguestandings",
         description="Get the standings for the specified league",
     )
     # @app_commands.guilds(discord.Object(id=TEST_ID))
