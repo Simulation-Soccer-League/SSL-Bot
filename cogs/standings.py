@@ -73,8 +73,6 @@ class Standings(commands.Cog):
         season="Season number (e.g. 24)",
         division="Division to show: 1, 2, or All (S24+ only)",
     )
-
-
     async def leaguestandings(
         self,
         interaction: discord.Interaction,
@@ -95,23 +93,27 @@ class Standings(commands.Cog):
         await interaction.response.defer()
 
         has_divisions = season >= 24
-        
+        division = division.lower()
+
         # -------- Enforce S24+ rule --------
-        if season < 24 and division.lower() != "all":
+        if season < 24 and division != "all":
             await interaction.followup.send(
                 "Divisions were introduced in Season 24.\n"
                 "Showing the full table instead.",
                 ephemeral=True,
             )
-            division = "All"
+            division = "all"
+
         # -------- Fetch data once --------
-        if season == 99:
-            raw_data = DEMO_STANDINGS_DATA
-            error_msg = None
-            print("Using DEMO standings data for Season 99")
-        else:
-            response = requests.get(f"{STANDINGSAPIBASEURL}?season={season}&league={league_id}")
-            standings_data = pd.DataFrame(json.loads(response.content))
+        response = requests.get(  
+            f"{STANDINGSAPIBASEURL}?season={season}&league={league_id}"
+        )
+        standings_data = pd.DataFrame(json.loads(response.content))  
+
+        standings_data = standings_data.sort_values(  
+            by=["p", "gd", "gf"],
+            ascending=[False, False, False]
+        ).reset_index(drop=True)
 
         if standings_data.empty:
             await interaction.followup.send(
@@ -120,47 +122,53 @@ class Standings(commands.Cog):
             )
             return
 
-        # print("Loaded standings")
-        
         # -------- Split by division --------
-        div1 = standings_data[standings_data['matchday'] == "1"]
-        div2 = standings_data[standings_data['matchday'] == "2"]
-        no_div = standings_data[standings_data['matchday'] == "ALL"]
-
-        division = division.lower()
+        div1 = standings_data[standings_data['matchday'] == "1"].reset_index(drop=True)
+        div2 = standings_data[standings_data['matchday'] == "2"].reset_index(drop=True)
+        no_div = standings_data[standings_data['matchday'] == "ALL"].reset_index(drop=True)
 
         # print("Split by division")
         # -------- Routing logic --------
         
         if not has_divisions:
-          data = standings_data
-          title = league.title()
+            data = standings_data
+            title = league.title()
+        elif division == "all":
+            data = None
         elif division == "1":
-          data = div1
-          title = f"{league.title()} Division 1"
+            data = div1
+            title = f"{league.title()} Division 1"
         elif division == "2":
-          data = div2
-          title = f"{league.title()} Division 2"
-        else: 
-          await interaction.followup.send(
+            data = div2
+            title = f"{league.title()} Division 2"
+        else:
+            await interaction.followup.send(
                 "Invalid division option. Use 1, 2, or All.",
                 ephemeral=True,
-          )
-          return
-        
-        # print("Separates data")
-                
+            )
+            return
+
+        # -------- Side label rule --------
+        show_side_label = not (season >= 24 and division in ["1", "2"])  
+
         if division == "all" and has_divisions:
-          image_bytes = self.create_two_divisions_image(
+            image_bytes = self.create_two_divisions_image(
                 div1,
                 div2,
                 league.title(),
                 season
-          )
-        else: 
-          image_bytes = self.create_standings_image(data, title, season, False, True, False, True)
+            )
+        else:
+            image_bytes = self.create_standings_image(
+                data,
+                title,
+                season,
+                False,
+                True,
+                False,
+                show_side_label,  
+            )
 
-        # print("Creates an image")
         if not image_bytes:
             await interaction.followup.send(
                 "Failed to generate standings image.",
@@ -170,14 +178,13 @@ class Standings(commands.Cog):
 
         # print("Generated image")
 
-        file = discord.File(fp=image_bytes, filename="standings.png")
-
         if division == "1":
             embed_title = f"{league.title()} Division 1 Standings - Season {season}"
         elif division == "2":
             embed_title = f"{league.title()} Division 2 Standings - Season {season}"
         else:
             embed_title = f"{league.title()} Standings - Season {season}"
+
         embed = discord.Embed(
             title=embed_title,
             color=discord.Color.purple(),
@@ -189,7 +196,16 @@ class Standings(commands.Cog):
         await interaction.followup.send(embed=embed, file=file)
 
     # ---------- IMAGE GENERATION: SINGLE TABLE ----------
-    def create_standings_image(self, standings_data, league_name, season, show_header=False, show_trophy=True, table_only=False, show_side_label=True):
+    def create_standings_image(
+        self,
+        standings_data,
+        league_name,
+        season,
+        show_header=False,
+        show_trophy=True,
+        table_only=False,
+        show_side_label=True,
+    ):
         try:
             # Theme and assets
             is_major = league_name.lower().startswith("major")
@@ -386,28 +402,26 @@ class Standings(commands.Cog):
 
             # Team rows
             current_y = header_y + row_height
-            for idx, team_stats in standings_data.iterrows():
+            for position, (_, team_stats) in enumerate(standings_data.iterrows(), start=1):
                 x = padding
                 #Default row background
-                row_bg = top_row if idx == 0 else (
-                    row_even if idx % 2 == 0 else row_odd
+                row_bg = top_row if position == 1 else (
+                    row_even if position % 2 == 0 else row_odd
                 )
-                # Promotion / Relegation logic (S24+ only)
+                # Promotion / Relegation logic (S24+ only)              
                 if season >= 24:
-                    position = idx + 1
-
-                # Division 2 rules
-                if is_division_2:
-                    if position == 1:
-                        row_bg = promotion_green
-                    elif position == 2:
-                        row_bg = playoff_blue
+                # Division 2 rules    
+                    if is_division_2:
+                        if position == 1:
+                            row_bg = promotion_green
+                        elif position == 2:
+                            row_bg = playoff_blue
                 # Division 1 rules
-                if is_division_1:
-                    if position == num_rows:
-                        row_bg = relegation_red
-                    elif position == num_rows - 1:
-                        row_bg = playoff_blue
+                    if is_division_1:
+                        if position == num_rows:
+                            row_bg = relegation_red
+                        elif position == num_rows - 1:
+                            row_bg = playoff_blue
                 draw.rectangle(
                     [padding, current_y, total_width + padding, current_y + row_height],
                     fill=row_bg,
@@ -415,7 +429,7 @@ class Standings(commands.Cog):
                 )
 
                 # Rank
-                pos_text = str(idx + 1)
+                pos_text = str(position)
                 pbbox = draw.textbbox((0, 0), pos_text, font=row_font)
                 w, h = pbbox[2] - pbbox[0], pbbox[3] - pbbox[1]
                 draw.text(

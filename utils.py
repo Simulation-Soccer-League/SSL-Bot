@@ -49,7 +49,7 @@ TEAM_ABBREVIATIONS = {
     "msd" : "AF Masques Sacrés", "lif": "Liffeyside Celtic FC", "rmp": "CS Rova Mpanjaka", "rova": "CS Rova Mpanjaka"
 }
 
-CURRENT_SEASON = 23
+CURRENT_SEASON = 24
 
 DEFAULT_LOGO_PATH = "./graphics/logos/league-logo.png"  
 MAJOR_LEAGUE_LOGO_PATH = "./graphics/logos/major_league_logo.png"
