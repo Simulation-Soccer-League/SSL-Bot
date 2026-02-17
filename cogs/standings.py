@@ -177,7 +177,8 @@ class Standings(commands.Cog):
             return
 
         # print("Generated image")
-
+        file = discord.File(fp = image_bytes, filename="standings.png")
+        
         if division == "1":
             embed_title = f"{league.title()} Division 1 Standings - Season {season}"
         elif division == "2":
