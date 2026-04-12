@@ -1,5 +1,10 @@
 from PIL import Image, ImageDraw, ImageFont
+import requests
+import json 
+import pandas as pd
 import os
+# from pytablericons import TablerIcons, OutlineIcon, FilledIcon
+
 
 DEFAULT_FONT_PATH = "./fonts/GOTHAM-BOLD.TTF"
 STANDINGSAPIBASEURL = "https://api.simulationsoccer.com/index/standings"
@@ -49,7 +54,26 @@ TEAM_ABBREVIATIONS = {
     "msd" : "AF Masques Sacrés", "lif": "Liffeyside Celtic FC", "rmp": "CS Rova Mpanjaka", "rova": "CS Rova Mpanjaka"
 }
 
-CURRENT_SEASON = 24
+OUT_STAT_GROUPS = {
+  "Physical": ["apps", "minutes played", "distance run (km)", "dribbles", "player of the match", "yellow cards", "red cards", "fouls", "fouls against", "average rating"],
+  "Attack": ["goals", "xg", "shots on target", "shots", "penalties taken", "penalties scored", "goals outside box", "xg overperformance", "offsides", "fk shots", "shot accuracy%", "pen adj xG"],
+  "Creative": ["assists", "xa", "successful passes", "attempted passes", "pass%", "key passes", "successful crosses", "attempted crosses", "cross%", "chances created", "progressive passes", "open play key passes", "successful open play crosses", "attempted open play crosses", "open play crosses%"],
+  "Defense": ["tackles won", "attempted tackles", "tackle%", "key tackles", "interceptions", "clearances", "mistakes leading to goals", "blocks", "key headers", "successful headers", "attempted headers", "header%", "shots blocked", "successful presses", "attempted presses", "press%"]
+}
+
+GK_STAT_GROUPS = {
+  "Physical": ["apps", "minutes played", "player of the match", "average rating"],
+  "Goalkeeper": ["won", "drawn", "lost", "clean sheets", "saves parried", "saves held", "saves tipped", "conceded", "save%", "penalties faced", "penalties saved", "xg prevented"]
+}
+
+PLAYER_DATA_GROUPS = {
+  "Player Information": ["class", "tpe", "tpebank", "render", "username", "traits"]
+}
+
+
+season = requests.get('https://api.simulationsoccer.com/admin/getCurrentSeason')
+
+CURRENT_SEASON = int(pd.DataFrame(json.loads(season.content))['season'].iloc[0])
 
 DEFAULT_LOGO_PATH = "./graphics/logos/league-logo.png"  
 MAJOR_LEAGUE_LOGO_PATH = "./graphics/logos/major_league_logo.png"
@@ -60,16 +84,17 @@ MINORS_DIV1_LOGO_PATH = "./graphics/logos/minors_div1.png"
 MINORS_DIV2_LOGO_PATH = "./graphics/logos/minors_div2.png"
 
 def get_team_logo_path(team_name): # Returns the file path for the team logo image based on the team name.
-    
     team_key = team_name.lower()
     imagename = team_key.replace(' ', '_')
-
+    
     if team_key in{t.lower() for t in ALL_MAIN_TOURNAMENT_TEAMS}:
         team_logo_path = f"graphics/logos/{imagename}.png"
     
     elif team_key in{t.lower() for t in ACADEMY_TEAMS}:
         team_logo_path = f"graphics/logos/academy_{imagename}.png"    
-    
+    else: 
+        return DEFAULT_LOGO_PATH
+      
     if os.path.isfile(team_logo_path): # If the file does not exist, returns the default logo path.
         return team_logo_path
     else:

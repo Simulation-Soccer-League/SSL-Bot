@@ -1,11 +1,27 @@
 import discord
+from discord.ui import View, button
 from discord.ext import commands
-from discord import app_commands
+from discord import (app_commands, ButtonStyle,)
 import pandas as pd
 import typing
 import requests
 import json 
 from db_utils import *
+from dotenv import load_dotenv
+import os
+
+from player_views import PlayerStatsView
+
+from utils import (
+  get_team_logo_path,
+  GK_STAT_GROUPS,
+  OUT_STAT_GROUPS,
+  PLAYER_DATA_GROUPS,
+  CURRENT_SEASON,
+)
+
+load_dotenv(".secrets/.env")
+TEST_ID = int(os.getenv("DISCORD_TEST_ID"))
 
 class Player(commands.Cog): # create a class for our cog that inherits from commands.Cog
     # this class is used to create a cog, which is a module that can be added to the bot
@@ -18,25 +34,82 @@ class Player(commands.Cog): # create a class for our cog that inherits from comm
         print(f"{__name__} is online!")
         
     @staticmethod
-    def playerStatsEmbed(data: pd.DataFrame) -> discord.Embed:
-        embed = discord.Embed(color = discord.Color(0xBD9523))
-        embed.title = data.iloc[0]['name']
-        embed.set_thumbnail(url = "https://cdn.discordapp.com/attachments/1001211146159792239/1020739550588456960/league-logo.png")
-        embed.add_field(name = "TPE", value = data.iloc[0]['tpe'], inline = True)
-        return(embed)
+    def playerStatsEmbed(data: pd.DataFrame, stats: pd.DataFrame | None = None) -> discord.Embed:
+        data = data.iloc[0]
         
-    @app_commands.command(name='player', description='Gets player information')
-    async def player(self, interaction: discord.Interaction, *, name: typing.Optional[str] = None):
+        # Create and color the embed
+        embed = discord.Embed(color = discord.Color(0xBD9523))
+        
+        # Title
+        embed.title = data['name']
+        embed.description = f"**{ data['team'] }** | { data['position'] }"
+
+        if stats is not None:
+          stats = stats.iloc[0]
+          # Gets relevant stats based on position
+          if data['pos_gk'] == 20:
+            for group, statistic in GK_STAT_GROUPS.items():
+              values = ""
+              for s in statistic:
+                value = stats[s]
+                values += f"**{ s.title() }:** { round(value, 2) }\n"
+              embed.add_field(name = f"## { group } ##", value = values, inline = True)  
+          else:
+            for group, statistic in OUT_STAT_GROUPS.items():
+              values = ""
+              for s in statistic:
+                value = stats[s]
+                values += f"**{ s.title() }:** { round(value, 2) }\n"
+              embed.add_field(name = f"## { group } ##", value = values, inline = True)
+        else: 
+          for group, statistic in PLAYER_DATA_GROUPS.items():
+            values = ""
+            for s in statistic:
+              value = data[s]
+              values += f"**{ s.title() }:** { value }\n"
+            embed.add_field(name = f"## { group } ##", value = values, inline = True)
+          
+        path = get_team_logo_path(data['team'])
+        file = discord.File(path, filename="image.png")
+        
+        embed.set_thumbnail(url = "attachment://image.png")
+        return embed, file
+        
+    @app_commands.command(name='player2', description='Gets player information')
+    @app_commands.guilds(discord.Object(id=TEST_ID))
+    async def player2(self, interaction: discord.Interaction, *, name: typing.Optional[str] = None):
         if name is None:
           name = get_name(interaction.user.id)
         if name is None:  
           await interaction.response.send_message("You have no user stored. Use /store to store your forum username.")  
         else:
-          info = requests.get('https://api.simulationsoccer.com/player/getPlayer?name=' + name.replace(" ", "%20"))
+          # Gets player information
+          portalReq = requests.get('https://api.simulationsoccer.com/player/getPlayer?name=' + name.replace(" ", "%20"))
           # Data formatting
-          data = pd.DataFrame(json.loads(info.content))
-          embed = self.playerStatsEmbed(data)
-          await interaction.response.send_message(embed = embed)
+          portalData = pd.DataFrame(json.loads(portalReq.content))
+          
+          if portalData.iloc[0]['pos_gk'] == 20:
+            careerReq = requests.get('https://api.simulationsoccer.com/index/careerKeeper?name=' + name.replace(" ", "%20"))  
+          else:
+            careerReq = requests.get('https://api.simulationsoccer.com/index/careerOutfield?name=' + name.replace(" ", "%20"))
+          
+          careerData = pd.DataFrame(json.loads(careerReq.content))
+          
+          aggregateReq = requests.get('https://api.simulationsoccer.com/index/playerAggregate?name=' + name.replace(" ", "%20"))  
+          
+          aggregateData = pd.DataFrame(json.loads(aggregateReq.content))
+          
+          embed, file = self.playerStatsEmbed(portalData, None)
+          
+          view = PlayerStatsView(
+              self,
+              portalData = portalData,
+              aggregateData = aggregateData,
+              careerData = careerData
+          )
+          
+          await interaction.response.send_message(embed = embed, file = file, view = view)
+
         
     @app_commands.command(name='bank', description='Gets player bank information')
     async def bank(self, interaction: discord.Interaction, name: typing.Optional[str] = None):
