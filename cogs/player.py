@@ -21,7 +21,7 @@ from utils import (
 )
 
 load_dotenv(".secrets/.env")
-TEST_ID = int(os.getenv("DISCORD_TEST_ID"))
+# TEST_ID = int(os.getenv("DISCORD_TEST_ID"))
 
 class Player(commands.Cog): # create a class for our cog that inherits from commands.Cog
     # this class is used to create a cog, which is a module that can be added to the bot
@@ -75,8 +75,8 @@ class Player(commands.Cog): # create a class for our cog that inherits from comm
         embed.set_thumbnail(url = "attachment://image.png")
         return embed, file
         
-    @app_commands.command(name='player2', description='Gets player information')
-    @app_commands.guilds(discord.Object(id=TEST_ID))
+    @app_commands.command(name='player', description='Gets player information')
+    # @app_commands.guilds(discord.Object(id=TEST_ID))
     async def player2(self, interaction: discord.Interaction, *, name: typing.Optional[str] = None):
         if name is None:
           name = get_name(interaction.user.id)
