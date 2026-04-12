@@ -28,7 +28,6 @@ from utils import (
     MINORS_DIV1_LOGO_PATH,
     MAJORS_DIV2_LOGO_PATH,
     MINORS_DIV2_LOGO_PATH,
-    DEMO_STANDINGS_DATA,
 )
 
 class Standings(commands.Cog):
