@@ -9,7 +9,7 @@ from utils import (
 
 class PlayerStatsView(View):
     def __init__(self, cog, portalData, aggregateData, careerData):
-        super().__init__(timeout=None)
+        super().__init__(timeout = 300) # Time out after 5 minutes
         self.cog = cog
         self.portalData = portalData
         self.aggregateData = aggregateData

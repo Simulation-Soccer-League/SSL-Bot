@@ -77,7 +77,7 @@ class Player(commands.Cog): # create a class for our cog that inherits from comm
         
     @app_commands.command(name='player', description='Gets player information')
     # @app_commands.guilds(discord.Object(id=TEST_ID))
-    async def player2(self, interaction: discord.Interaction, *, name: typing.Optional[str] = None):
+    async def player(self, interaction: discord.Interaction, *, name: typing.Optional[str] = None):
         if name is None:
           name = get_name(interaction.user.id)
         if name is None:  
