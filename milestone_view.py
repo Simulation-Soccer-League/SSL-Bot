@@ -1,0 +1,58 @@
+from discord.ui import View, button
+from discord import ButtonStyle
+import discord
+import pandas as pd
+
+from utils import (
+  CURRENT_SEASON,
+  MILESTONES,
+)
+
+class MilestoneView(View):
+    def __init__(self, cog, actives):
+        super().__init__(timeout = 600) # Time out after 10 minutes
+        self.cog = cog
+        self.actives = actives
+
+        # Create one button per milestone
+        for stat, base in MILESTONES.items():
+            self.add_item(self.make_button(stat, base))
+
+        # First button active
+        self.children[0].disabled = True
+
+    def make_button(self, stat, base):
+        # Create a button instance
+        button = discord.ui.Button(
+            label = stat.title(),
+            style = discord.ButtonStyle.success
+        )
+        
+        # Define the callback dynamically
+        async def callback(interaction: discord.Interaction):
+            # Toggle active state
+            for child in self.children:
+                child.disabled = False
+            button.disabled = True
+            
+            # Build embed for this milestone
+            embed = await self.cog.milestoneEmbed(self.actives, stat, base)
+            
+            # If this interaction has not been responded to yet:
+            if interaction.response.is_done():
+                # Use followup
+                await interaction.followup.edit_message(
+                    message_id = interaction.message.id,
+                    embed = embed,
+                    view = self
+                )
+            else:
+                # First response
+                await interaction.response.edit_message(
+                    embed = embed,
+                    view = self
+                )
+
+        # Attach callback to button
+        button.callback = callback
+        return button
