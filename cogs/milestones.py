@@ -21,6 +21,7 @@ from utils import (
   PLAYER_DATA_GROUPS,
   CURRENT_SEASON,
   MILESTONES,
+  league_by_id,
 )
 
 load_dotenv(".secrets/.env")
@@ -38,12 +39,19 @@ class Milestones(commands.Cog): # create a class for our cog that inherits from 
     
     
     @staticmethod
-    async def milestoneEmbed(actives: pd.DataFrame, stat, base) -> discord.Embed:
+    async def milestoneEmbed(actives: pd.DataFrame, stat, base, league) -> discord.Embed:
         # Create and color the embed
         embed = discord.Embed(color = discord.Color(0xBD9523))
         
+        if (league == None):
+          leagueGroup = "False"
+          leagueName = None
+        else:
+          leagueGroup = "True"
+          leagueName = league_by_id.get(league)
+        
         # Title
-        embed.title = f" { stat.title() } Milestone Chasers"
+        embed.title = f" { leagueName if leagueName is not None else ''} { stat.title() } Milestone Chasers"
         
         lines = {m: [] for m in base}
 
@@ -52,13 +60,17 @@ class Milestones(commands.Cog): # create a class for our cog that inherits from 
         else:
           url = "https://api.simulationsoccer.com/index/careerOutfield"
         
-        data = await getAPI(url, params = {"name": "ALL"})
+        data = await getAPI(url, params = {"name": "ALL", "league": leagueGroup})
         
         if stat == 'saves':
           value = data['saves parried'] + data['saves tipped'] + data['saves held']
           data.insert(len(data.columns)-1, stat, value)
         
-        data = data.loc[(data['name'].isin(actives['name'])) * (data[stat] > 0.95*base[0])].sort_values(stat)
+        data = data.loc[
+          (data['name'].isin(actives['name'])) & 
+          (data[stat] > 0.95*base[0]) &
+          ( True if leagueName is None else (data['league'] == leagueName))
+        ].sort_values(stat)
         
         for index, row in data.iterrows():
           value = row[stat]
@@ -82,20 +94,30 @@ class Milestones(commands.Cog): # create a class for our cog that inherits from 
             
         return embed
     
-    @app_commands.command(name = 'upcoming', description = 'Returns a list of active players near specific milestones for given statistics.')
+    @app_commands.command(name = 'upcoming')
     @app_commands.guilds(discord.Object(id=TEST_ID))
-    async def upcoming(self, interaction: discord.Interaction, player: typing.Optional[str] = None):
+    async def upcoming(
+      self, 
+      interaction: discord.Interaction, 
+      league: typing.Optional[int] = None
+      ):
+        """Returns active players within 5% of specific milestones for given statistics.
+        
+        Args:
+          league(int) : Optional limited to a specific league (0: The Cup, 1: Major League, 2: Minor League, 5: WSFC)
+        """
         await interaction.response.defer()
         
         actives = await getAPI("https://api.simulationsoccer.com/player/getAllPlayers", params = {"active": "true"})
         
         stat, base = next(iter(MILESTONES.items()))
         
-        embed = await self.milestoneEmbed(actives, stat, base)
+        embed = await self.milestoneEmbed(actives, stat, base, league)
         
         view = MilestoneView(
           self,
-          actives
+          actives,
+          league
         )
         
         await interaction.followup.send(embed = embed, view = view)

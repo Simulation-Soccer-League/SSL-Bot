@@ -14,7 +14,8 @@ LEAGUEIDMAPPING = {
     "major": 1,
     "minor": 2,
     "ssl cup": 0,
-    "ssl shield": 0,  
+    "ssl shield": 0,
+    "wsfc": 5
 }
 MAJOR_LEAGUE_TEAMS_LIST = [
     "CA Buenos Aires", "Tokyo S.C.", "Hollywood FC", "CF Catalunya", "A.C. Romana",
@@ -83,6 +84,14 @@ MILESTONES = {
   "interceptions": [500, 750, 1000]
 }
 
+LEAGUEIDMAP = {
+  "The Cup": 0,
+  "Major League": 1,
+  "Minor League": 2,
+  "WSFC": 5
+}
+
+league_by_id = { v: k for k, v in LEAGUEIDMAP.items() }
 
 season = requests.get('https://api.simulationsoccer.com/admin/getCurrentSeason')
 
@@ -116,7 +125,7 @@ def get_team_logo_path(team_name): # Returns the file path for the team logo ima
 MAJOR_TROPHY_PATH= "./graphics/trophies/SSL_Major_Trophy_Front.png"
 MINOR_TROPHY_PATH= "./graphics/trophies/SSL_Minor_Trophy_Front.png"
 
-async def getAPI(endpoint, params=None):
+async def getAPI(endpoint, params = None):
   async with aiohttp.ClientSession() as session:
     try:
       async with session.get(endpoint, params=params, timeout=15) as resp:

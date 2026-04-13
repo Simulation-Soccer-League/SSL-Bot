@@ -9,19 +9,20 @@ from utils import (
 )
 
 class MilestoneView(View):
-    def __init__(self, cog, actives):
+    def __init__(self, cog, actives, league):
         super().__init__(timeout = 600) # Time out after 10 minutes
         self.cog = cog
         self.actives = actives
+        self.league = league
 
         # Create one button per milestone
         for stat, base in MILESTONES.items():
-            self.add_item(self.make_button(stat, base))
+            self.add_item(self.make_button(stat, base, league))
 
         # First button active
         self.children[0].disabled = True
 
-    def make_button(self, stat, base):
+    def make_button(self, stat, base, league):
         # Create a button instance
         button = discord.ui.Button(
             label = stat.title(),
@@ -36,7 +37,7 @@ class MilestoneView(View):
             button.disabled = True
             
             # Build embed for this milestone
-            embed = await self.cog.milestoneEmbed(self.actives, stat, base)
+            embed = await self.cog.milestoneEmbed(self.actives, stat, base, league)
             
             # If this interaction has not been responded to yet:
             if interaction.response.is_done():
