@@ -11,7 +11,7 @@ from db_utils import *
 from dotenv import load_dotenv
 import os
 
-from milestone_view import MilestoneView
+from milestone_view import (MilestoneView, RecordView)
 
 from utils import (
   getAPI,
@@ -77,7 +77,7 @@ class Milestones(commands.Cog): # create a class for our cog that inherits from 
           player = row['name']
           
           for m in base:
-            if value < m and value > (m * 0.95):
+            if value < m and (value >= min(m * 0.95, (m - 5))):
               lines[m].append(
                 f" { player } is { round(m - value, 2) } away from **{ m }** { stat.title() }!"
               )
@@ -93,7 +93,7 @@ class Milestones(commands.Cog): # create a class for our cog that inherits from 
           )
             
         return embed
-    
+      
     @app_commands.command(name = 'upcoming')
     @app_commands.guilds(discord.Object(id=TEST_ID))
     async def upcoming(
@@ -101,7 +101,7 @@ class Milestones(commands.Cog): # create a class for our cog that inherits from 
       interaction: discord.Interaction, 
       league: typing.Optional[int] = None
       ):
-        """Returns active players within 5% of specific milestones for given statistics.
+        """Returns active players within 5% (or 5) of specific milestones for given statistics.
         
         Args:
           league(int) : Optional limited to a specific league (0: The Cup, 1: Major League, 2: Minor League, 5: WSFC)
@@ -118,6 +118,106 @@ class Milestones(commands.Cog): # create a class for our cog that inherits from 
           self,
           actives,
           league
+        )
+        
+        await interaction.followup.send(embed = embed, view = view)
+
+
+    @staticmethod
+    async def recordEmbed(actives: pd.DataFrame, stat, league, org) -> discord.Embed:
+        # Create and color the embed
+        embed = discord.Embed(color = discord.Color(0xBD9523))
+        
+        if (league == None):
+          leagueGroup = "False"
+          leagueName = None
+        else:
+          leagueGroup = "True"
+          leagueName = league_by_id.get(league)
+        
+        # Title
+        embed.title = f" { leagueName if leagueName is not None else ''} { stat.title() } Record Chasers"
+        
+        if stat in ['saves', 'clean sheets']:
+          url = "https://api.simulationsoccer.com/index/careerKeeper"
+        else:
+          url = "https://api.simulationsoccer.com/index/careerOutfield"
+        
+        data = await getAPI(url, params = {"name": "ALL", "league": leagueGroup})
+        
+        if stat == 'saves':
+          value = data['saves parried'] + data['saves tipped'] + data['saves held']
+          data.insert(len(data.columns)-1, stat, value)
+        
+        leagueFilter = data.loc[
+          ( True if leagueName is None else (data['league'] == leagueName))
+        ]
+        
+        record = leagueFilter.loc[
+          ( leagueFilter[stat] == max(leagueFilter[stat]) )
+        ]
+
+        recordValue = record[stat].iloc[0]
+        
+        embed.add_field(
+            name = f"## Current { stat.title() } Record Holder ##",
+            value = f" **{ record['name'].iloc[0] }** with **{ recordValue }** { stat.title() }!",
+            inline = False
+          )
+          
+        data = data.loc[
+          (data['name'].isin(actives['name'])) & 
+          ((data[stat] > 0.90*recordValue) & (data[stat] < recordValue)) &
+          ( True if leagueName is None else (data['league'] == leagueName))
+        ].sort_values(stat)
+        
+        lines = []
+        
+        for index, row in data.iterrows():
+          value = row[stat]
+          player = row['name']
+          
+          lines.append(
+            f" { player } is { round(recordValue - value, 2) } away from the record!"
+          )
+        
+        text = "\n".join(lines) if lines else "No players close."  
+        
+        embed.add_field(
+          name = "## The Chasers ##",
+          value = text,
+          inline = False
+        )
+            
+        return embed
+    
+    @app_commands.command(name = 'upcoming_records')
+    @app_commands.guilds(discord.Object(id=TEST_ID))
+    async def upcoming_records(
+      self, 
+      interaction: discord.Interaction, 
+      league: typing.Optional[int] = None,
+      org: typing.Optional[str] = None
+      ):
+        """Returns active players within 10% of the record for the given statistic.
+        
+        Args:
+          league(int) : Optional limited to a specific league (0: The Cup, 1: Major League, 2: Minor League, 5: WSFC)
+          org(str) : Optional limited to a specific team (using official 3-4 letter abbreviation)
+        """
+        await interaction.response.defer()
+        
+        actives = await getAPI("https://api.simulationsoccer.com/player/getAllPlayers", params = {"active": "true"})
+        
+        stat, base = next(iter(MILESTONES.items()))
+        
+        embed = await self.recordEmbed(actives, stat, league, org)
+        
+        view = RecordView(
+          self,
+          actives,
+          league,
+          org
         )
         
         await interaction.followup.send(embed = embed, view = view)
