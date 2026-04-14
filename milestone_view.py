@@ -10,7 +10,7 @@ from utils import (
 
 class MilestoneView(View):
     def __init__(self, cog, actives, league):
-        super().__init__(timeout = 600) # Time out after 10 minutes
+        super().__init__(timeout = 300) # Time out after 5 minutes
         self.cog = cog
         self.actives = actives
         self.league = league
@@ -21,6 +21,17 @@ class MilestoneView(View):
 
         # First button active
         self.children[0].disabled = True
+        
+    async def on_timeout(self):
+        # Disable all buttons
+        for child in self.children:
+            child.disabled = True
+
+        # Edit the original message to update the disabled state
+        try:
+            await self.message.edit(view=self)
+        except Exception as e:
+            print("Timeout edit failed:", e)
 
     def make_button(self, stat, base, league):
         # Create a button instance
@@ -61,7 +72,7 @@ class MilestoneView(View):
 
 class RecordView(View):
     def __init__(self, cog, actives, league, org):
-        super().__init__(timeout = 600) # Time out after 10 minutes
+        super().__init__(timeout = 300) # Time out after 5 minutes
         self.cog = cog
         self.actives = actives
         self.league = league
@@ -73,6 +84,17 @@ class RecordView(View):
 
         # First button active
         self.children[0].disabled = True
+      
+    async def on_timeout(self):
+        # Disable all buttons
+        for child in self.children:
+            child.disabled = True
+
+        # Edit the original message to update the disabled state
+        try:
+            await self.message.edit(view=self)
+        except Exception as e:
+            print("Timeout edit failed:", e)
 
     def make_button(self, stat, league, org):
         # Create a button instance

@@ -150,4 +150,19 @@ async def getAPI(endpoint, params = None):
       print("getAPI exception:", e)
       return None
 
+def filter_players(df, league = None, club = None):
+    # Always return a Series mask, never a Python bool
+    leagueMask = (
+        df['league'] == league
+        if league is not None
+        else pd.Series(True, index=df.index)
+    )
+
+    clubMask = (
+        df['club'] == club
+        if club is not None
+        else pd.Series(True, index=df.index)
+    )
+
+    return df.loc[leagueMask & clubMask]
 

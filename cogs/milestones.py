@@ -21,7 +21,9 @@ from utils import (
   PLAYER_DATA_GROUPS,
   CURRENT_SEASON,
   MILESTONES,
+  TEAM_ABBREVIATIONS,
   league_by_id,
+  filter_players,
 )
 
 load_dotenv(".secrets/.env")
@@ -51,7 +53,8 @@ class Milestones(commands.Cog): # create a class for our cog that inherits from 
           leagueName = league_by_id.get(league)
         
         # Title
-        embed.title = f" { leagueName if leagueName is not None else ''} { stat.title() } Milestone Chasers"
+        embed.title = f" { stat.title() } Milestone Chasers"
+        embed.description = f"{ leagueName if leagueName is not None else ''}"
         
         lines = {m: [] for m in base}
 
@@ -124,37 +127,48 @@ class Milestones(commands.Cog): # create a class for our cog that inherits from 
 
 
     @staticmethod
-    async def recordEmbed(actives: pd.DataFrame, stat, league, org) -> discord.Embed:
+    async def recordEmbed(actives: pd.DataFrame, stat, league, team) -> discord.Embed:
         # Create and color the embed
         embed = discord.Embed(color = discord.Color(0xBD9523))
         
-        if (league == None):
+        if (league is None):
           leagueGroup = "False"
           leagueName = None
         else:
           leagueGroup = "True"
           leagueName = league_by_id.get(league)
+          
+        if (team is None):
+          organization = None
+          orgGroup = "False"
+        elif (TEAM_ABBREVIATIONS[team.lower()] is None):
+          organization = None
+          orgGroup = "False"
+        else:
+          organization = TEAM_ABBREVIATIONS[team.lower()]
+          orgGroup = "True"
         
         # Title
-        embed.title = f" { leagueName if leagueName is not None else ''} { stat.title() } Record Chasers"
+        embed.title = f" { stat.title() } Record Chasers"
+        embed.description = f"{ organization if organization is not None else ''} { leagueName if leagueName is not None else ''}"
         
         if stat in ['saves', 'clean sheets']:
           url = "https://api.simulationsoccer.com/index/careerKeeper"
         else:
           url = "https://api.simulationsoccer.com/index/careerOutfield"
         
-        data = await getAPI(url, params = {"name": "ALL", "league": leagueGroup})
+        data = await getAPI(url, params = {"name": "ALL", "league": leagueGroup, "club": orgGroup})
+        
+        print(data)
         
         if stat == 'saves':
           value = data['saves parried'] + data['saves tipped'] + data['saves held']
           data.insert(len(data.columns)-1, stat, value)
         
-        leagueFilter = data.loc[
-          ( True if leagueName is None else (data['league'] == leagueName))
-        ]
+        dataFilter = filter_players(data, league = leagueName, club = organization)
         
-        record = leagueFilter.loc[
-          ( leagueFilter[stat] == max(leagueFilter[stat]) )
+        record = dataFilter.loc[
+          ( dataFilter[stat] == max(dataFilter[stat]) )
         ]
 
         recordValue = record[stat].iloc[0]
@@ -165,10 +179,9 @@ class Milestones(commands.Cog): # create a class for our cog that inherits from 
             inline = False
           )
           
-        data = data.loc[
-          (data['name'].isin(actives['name'])) & 
-          ((data[stat] > 0.90*recordValue) & (data[stat] < recordValue)) &
-          ( True if leagueName is None else (data['league'] == leagueName))
+        data = dataFilter.loc[
+          (dataFilter['name'].isin(actives['name'])) & 
+          ((dataFilter[stat] > 0.90*recordValue) & (dataFilter[stat] < recordValue))
         ].sort_values(stat)
         
         lines = []
@@ -197,13 +210,13 @@ class Milestones(commands.Cog): # create a class for our cog that inherits from 
       self, 
       interaction: discord.Interaction, 
       league: typing.Optional[int] = None,
-      org: typing.Optional[str] = None
+      team: typing.Optional[str] = None
       ):
         """Returns active players within 10% of the record for the given statistic.
         
         Args:
           league(int) : Optional limited to a specific league (0: The Cup, 1: Major League, 2: Minor League, 5: WSFC)
-          org(str) : Optional limited to a specific team (using official 3-4 letter abbreviation)
+          team(str) : Optional limited to a specific team (using official 3-4 letter abbreviation)
         """
         await interaction.response.defer()
         
@@ -211,13 +224,13 @@ class Milestones(commands.Cog): # create a class for our cog that inherits from 
         
         stat, base = next(iter(MILESTONES.items()))
         
-        embed = await self.recordEmbed(actives, stat, league, org)
+        embed = await self.recordEmbed(actives, stat, league, team)
         
         view = RecordView(
           self,
           actives,
           league,
-          org
+          team
         )
         
         await interaction.followup.send(embed = embed, view = view)
