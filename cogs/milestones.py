@@ -123,8 +123,8 @@ class Milestones(commands.Cog): # create a class for our cog that inherits from 
           league
         )
         
-        await interaction.followup.send(embed = embed, view = view)
-
+        msg = await interaction.followup.send(embed = embed, view = view)
+        view.message = msg
 
     @staticmethod
     async def recordEmbed(actives: pd.DataFrame, stat, league, team) -> discord.Embed:
@@ -158,8 +158,6 @@ class Milestones(commands.Cog): # create a class for our cog that inherits from 
           url = "https://api.simulationsoccer.com/index/careerOutfield"
         
         data = await getAPI(url, params = {"name": "ALL", "league": leagueGroup, "club": orgGroup})
-        
-        print(data)
         
         if stat == 'saves':
           value = data['saves parried'] + data['saves tipped'] + data['saves held']
@@ -233,7 +231,8 @@ class Milestones(commands.Cog): # create a class for our cog that inherits from 
           team
         )
         
-        await interaction.followup.send(embed = embed, view = view)
+        msg = await interaction.followup.send(embed = embed, view = view)
+        view.message = msg
         
         
 async def setup(bot): # this is called by Pycord to setup the cog
