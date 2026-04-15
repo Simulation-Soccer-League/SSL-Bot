@@ -255,3 +255,6 @@ my.png
 
 # Ignore SSL Bot Python caches
 *__pycache__
+
+# Ignore database files
+/database/*
