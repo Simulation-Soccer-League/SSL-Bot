@@ -28,7 +28,7 @@ from utils import (
 )
 
 load_dotenv(".secrets/.env")
-TEST_ID = int(os.getenv("DISCORD_TEST_ID"))
+# TEST_ID = int(os.getenv("DISCORD_TEST_ID"))
 
 class Milestones(commands.Cog): # create a class for our cog that inherits from commands.Cog
     # this class is used to create a cog, which is a module that can be added to the bot
@@ -100,7 +100,7 @@ class Milestones(commands.Cog): # create a class for our cog that inherits from 
         return embed
       
     @app_commands.command(name = 'upcoming')
-    @app_commands.guilds(discord.Object(id=TEST_ID))
+    # @app_commands.guilds(discord.Object(id=TEST_ID))
     async def upcoming(
       self, 
       interaction: discord.Interaction, 
@@ -208,7 +208,7 @@ class Milestones(commands.Cog): # create a class for our cog that inherits from 
         return embed
     
     @app_commands.command(name = 'upcoming_records')
-    @app_commands.guilds(discord.Object(id=TEST_ID))
+    # @app_commands.guilds(discord.Object(id=TEST_ID))
     async def upcoming_records(
       self, 
       interaction: discord.Interaction, 
