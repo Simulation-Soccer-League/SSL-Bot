@@ -34,7 +34,7 @@ class Player(commands.Cog): # create a class for our cog that inherits from comm
         print(f"{__name__} is online!")
         
     @staticmethod
-    def playerStatsEmbed(data: pd.DataFrame, stats: pd.DataFrame | None = None) -> discord.Embed:
+    def playerStatsEmbed(data: pd.DataFrame, stats: pd.DataFrame) -> discord.Embed:
         data = data.iloc[0]
         
         # Create and color the embed
