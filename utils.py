@@ -1,5 +1,11 @@
 from PIL import Image, ImageDraw, ImageFont
+import requests
+import json 
+import pandas as pd
 import os
+import aiohttp
+# from pytablericons import TablerIcons, OutlineIcon, FilledIcon
+
 
 DEFAULT_FONT_PATH = "./fonts/GOTHAM-BOLD.TTF"
 STANDINGSAPIBASEURL = "https://api.simulationsoccer.com/index/standings"
@@ -8,7 +14,8 @@ LEAGUEIDMAPPING = {
     "major": 1,
     "minor": 2,
     "ssl cup": 0,
-    "ssl shield": 0,  
+    "ssl shield": 0,
+    "wsfc": 5
 }
 MAJOR_LEAGUE_TEAMS_LIST = [
     "CA Buenos Aires", "Tokyo S.C.", "Hollywood FC", "CF Catalunya", "A.C. Romana",
@@ -49,7 +56,46 @@ TEAM_ABBREVIATIONS = {
     "msd" : "AF Masques Sacrés", "lif": "Liffeyside Celtic FC", "rmp": "CS Rova Mpanjaka", "rova": "CS Rova Mpanjaka"
 }
 
-CURRENT_SEASON = 24
+OUT_STAT_GROUPS = {
+  "Physical": ["apps", "minutes played", "distance run (km)", "dribbles", "player of the match", "yellow cards", "red cards", "fouls", "fouls against", "average rating"],
+  "Attack": ["goals", "xg", "shots on target", "shots", "penalties taken", "penalties scored", "goals outside box", "xg overperformance", "offsides", "fk shots", "shot accuracy%", "pen adj xG"],
+  "Creative": ["assists", "xa", "successful passes", "attempted passes", "pass%", "key passes", "successful crosses", "attempted crosses", "cross%", "chances created", "progressive passes", "open play key passes", "successful open play crosses", "attempted open play crosses", "open play crosses%"],
+  "Defense": ["tackles won", "attempted tackles", "tackle%", "key tackles", "interceptions", "clearances", "mistakes leading to goals", "blocks", "key headers", "successful headers", "attempted headers", "header%", "shots blocked", "successful presses", "attempted presses", "press%"]
+}
+
+GK_STAT_GROUPS = {
+  "Physical": ["apps", "minutes played", "player of the match", "average rating"],
+  "Goalkeeper": ["won", "drawn", "lost", "clean sheets", "saves parried", "saves held", "saves tipped", "conceded", "save%", "penalties faced", "penalties saved", "xg prevented"]
+}
+
+PLAYER_DATA_GROUPS = {
+  "Player Information": ["class", "tpe", "tpebank", "render", "username", "traits"]
+}
+
+MILESTONES = {
+  "apps": [100, 200, 300], 
+  "goals": [50, 100, 150, 200], 
+  "assists": [50, 100, 150], 
+  "saves": [500, 750, 1000, 1250], 
+  "clean sheets": [25, 50, 75],
+  "distance run (km)": [2500, 3000, 3500, 4000], 
+  "successful passes": [5000, 7500, 10000, 12500, 15000], 
+  "tackles won": [500, 750, 1000], 
+  "interceptions": [500, 750, 1000]
+}
+
+LEAGUEIDMAP = {
+  "The Cup": 0,
+  "Major League": 1,
+  "Minor League": 2,
+  "WSFC": 5
+}
+
+league_by_id = { v: k for k, v in LEAGUEIDMAP.items() }
+
+season = requests.get('https://api.simulationsoccer.com/admin/getCurrentSeason')
+
+CURRENT_SEASON = int(pd.DataFrame(json.loads(season.content))['season'].iloc[0])
 
 DEFAULT_LOGO_PATH = "./graphics/logos/league-logo.png"  
 MAJOR_LEAGUE_LOGO_PATH = "./graphics/logos/major_league_logo.png"
@@ -60,16 +106,17 @@ MINORS_DIV1_LOGO_PATH = "./graphics/logos/minors_div1.png"
 MINORS_DIV2_LOGO_PATH = "./graphics/logos/minors_div2.png"
 
 def get_team_logo_path(team_name): # Returns the file path for the team logo image based on the team name.
-    
     team_key = team_name.lower()
     imagename = team_key.replace(' ', '_')
-
+    
     if team_key in{t.lower() for t in ALL_MAIN_TOURNAMENT_TEAMS}:
         team_logo_path = f"graphics/logos/{imagename}.png"
     
     elif team_key in{t.lower() for t in ACADEMY_TEAMS}:
         team_logo_path = f"graphics/logos/academy_{imagename}.png"    
-    
+    else: 
+        return DEFAULT_LOGO_PATH
+      
     if os.path.isfile(team_logo_path): # If the file does not exist, returns the default logo path.
         return team_logo_path
     else:
@@ -78,344 +125,47 @@ def get_team_logo_path(team_name): # Returns the file path for the team logo ima
 MAJOR_TROPHY_PATH= "./graphics/trophies/SSL_Major_Trophy_Front.png"
 MINOR_TROPHY_PATH= "./graphics/trophies/SSL_Minor_Trophy_Front.png"
 
+async def getAPI(endpoint, params = None):
+  async with aiohttp.ClientSession() as session:
+    try:
+      async with session.get(endpoint, params=params, timeout=15) as resp:
+        if resp.status != 200:
+            print("getAPI error: HTTP", resp.status)
+            return None
 
-DEMO_STANDINGS_DATA = [
-    {
-        "team": "AS Paris",
-        "season": 22,
-        "matchtype": 2,
-        "matchday": "1",
-        "mp": 22,
-        "w": 20,
-        "d": 1,
-        "l": 1,
-        "gf": 85,
-        "ga": 11,
-        "gd": 74,
-        "p": 61,
-    },
-    {
-        "team": "União São Paulo",
-        "season": 22,
-        "matchtype": 1,
-        "matchday": "1",
-        "mp": 22,
-        "w": 18,
-        "d": 3,
-        "l": 1,
-        "gf": 83,
-        "ga": 25,
-        "gd": 58,
-        "p": 57,
-    },
-    {
-        "team": "Hollywood FC",
-        "season": 22,
-        "matchtype": 1,
-        "matchday": "1",
-        "mp": 22,
-        "w": 17,
-        "d": 1,
-        "l": 4,
-        "gf": 73,
-        "ga": 32,
-        "gd": 41,
-        "p": 52,
-    },
-    {
-        "team": "F.C. Kaapstad",
-        "season": 22,
-        "matchtype": 2,
-        "matchday": "1",
-        "mp": 22,
-        "w": 16,
-        "d": 2,
-        "l": 4,
-        "gf": 80,
-        "ga": 28,
-        "gd": 52,
-        "p": 50,
-    },
-    {
-        "team": "Reykjavik United",
-        "season": 22,
-        "matchtype": 1,
-        "matchday": "1",
-        "mp": 22,
-        "w": 16,
-        "d": 2,
-        "l": 4,
-        "gf": 68,
-        "ga": 30,
-        "gd": 38,
-        "p": 50,
-    },
-    {
-        "team": "Seoul MFC",
-        "season": 22,
-        "matchtype": 2,
-        "matchday": "1",
-        "mp": 22,
-        "w": 15,
-        "d": 2,
-        "l": 5,
-        "gf": 64,
-        "ga": 30,
-        "gd": 34,
-        "p": 47,
-    },
-    {
-        "team": "Schwarzwälder FV",
-        "season": 22,
-        "matchtype": 1,
-        "matchday": "1",
-        "mp": 22,
-        "w": 14,
-        "d": 1,
-        "l": 7,
-        "gf": 59,
-        "ga": 41,
-        "gd": 18,
-        "p": 43,
-    },
-    {
-        "team": "Montréal United",
-        "season": 22,
-        "matchtype": 2,
-        "matchday": "1",
-        "mp": 22,
-        "w": 13,
-        "d": 3,
-        "l": 6,
-        "gf": 69,
-        "ga": 45,
-        "gd": 24,
-        "p": 42,
-    },
-    {
-        "team": "Rapid Magyar SC",
-        "season": 22,
-        "matchtype": 2,
-        "matchday": "1",
-        "mp": 22,
-        "w": 12,
-        "d": 3,
-        "l": 7,
-        "gf": 50,
-        "ga": 40,
-        "gd": 10,
-        "p": 39,
-    },
-    {
-        "team": "CS Rova Mpanjaka",
-        "season": 22,
-        "matchtype": 2,
-        "matchday": "1",
-        "mp": 22,
-        "w": 12,
-        "d": 3,
-        "l": 7,
-        "gf": 63,
-        "ga": 56,
-        "gd": 7,
-        "p": 39,
-    },
-    {
-        "team": "CD Tenochtitlan",
-        "season": 22,
-        "matchtype": 1,
-        "matchday": "1",
-        "mp": 22,
-        "w": 11,
-        "d": 1,
-        "l": 10,
-        "gf": 41,
-        "ga": 42,
-        "gd": -1,
-        "p": 34,
-    },
-    {
-        "team": "CA Buenos Aires",
-        "season": 22,
-        "matchtype": 1,
-        "matchday": "1",
-        "mp": 22,
-        "w": 11,
-        "d": 1,
-        "l": 10,
-        "gf": 50,
-        "ga": 55,
-        "gd": -5,
-        "p": 34,
-    },
-    {
-        "team": "AF Masques Sacrés",
-        "season": 22,
-        "matchtype": 2,
-        "matchday": "2",
-        "mp": 22,
-        "w": 10,
-        "d": 2,
-        "l": 10,
-        "gf": 54,
-        "ga": 44,
-        "gd": 10,
-        "p": 32,
-    },
-    {
-        "team": "CF Catalunya",
-        "season": 22,
-        "matchtype": 1,
-        "matchday": "2",
-        "mp": 22,
-        "w": 9,
-        "d": 4,
-        "l": 9,
-        "gf": 40,
-        "ga": 43,
-        "gd": -3,
-        "p": 31,
-    },
-    {
-        "team": "North Shore United",
-        "season": 22,
-        "matchtype": 2,
-        "matchday": "2",
-        "mp": 22,
-        "w": 9,
-        "d": 3,
-        "l": 10,
-        "gf": 69,
-        "ga": 57,
-        "gd": 12,
-        "p": 30,
-    },
-    {
-        "team": "Xelajú Cósmico FC",
-        "season": 22,
-        "matchtype": 1,
-        "matchday": "2",
-        "mp": 22,
-        "w": 8,
-        "d": 1,
-        "l": 13,
-        "gf": 43,
-        "ga": 56,
-        "gd": -13,
-        "p": 25,
-    },
-    {
-        "team": "Athênai F.C.",
-        "season": 22,
-        "matchtype": 2,
-        "matchday": "2",
-        "mp": 22,
-        "w": 6,
-        "d": 2,
-        "l": 14,
-        "gf": 42,
-        "ga": 72,
-        "gd": -30,
-        "p": 20,
-    },
-    {
-        "team": "Shanghai Dragons FC",
-        "season": 22,
-        "matchtype": 1,
-        "matchday": "2",
-        "mp": 22,
-        "w": 5,
-        "d": 4,
-        "l": 13,
-        "gf": 29,
-        "ga": 48,
-        "gd": -19,
-        "p": 19,
-    },
-    {
-        "team": "A.C. Romana",
-        "season": 22,
-        "matchtype": 1,
-        "matchday": "2",
-        "mp": 22,
-        "w": 5,
-        "d": 2,
-        "l": 15,
-        "gf": 21,
-        "ga": 67,
-        "gd": -46,
-        "p": 17,
-    },
-    {
-        "team": "Krung Thep FC",
-        "season": 22,
-        "matchtype": 2,
-        "matchday": "2",
-        "mp": 22,
-        "w": 4,
-        "d": 4,
-        "l": 14,
-        "gf": 58,
-        "ga": 70,
-        "gd": -12,
-        "p": 16,
-    },
-    {
-        "team": "Tokyo S.C.",
-        "season": 22,
-        "matchtype": 1,
-        "matchday": "2",
-        "mp": 22,
-        "w": 4,
-        "d": 3,
-        "l": 15,
-        "gf": 34,
-        "ga": 69,
-        "gd": -35,
-        "p": 15,
-    },
-    {
-        "team": "Liffeyside Celtic FC",
-        "season": 22,
-        "matchtype": 1,
-        "matchday": "2",
-        "mp": 22,
-        "w": 1,
-        "d": 3,
-        "l": 18,
-        "gf": 32,
-        "ga": 65,
-        "gd": -33,
-        "p": 6,
-    },
-    {
-        "team": "Cairo City",
-        "season": 22,
-        "matchtype": 2,
-        "matchday": "2",
-        "mp": 22,
-        "w": 1,
-        "d": 2,
-        "l": 19,
-        "gf": 30,
-        "ga": 94,
-        "gd": -64,
-        "p": 5,
-    },
-    {
-        "team": "Inter London",
-        "season": 22,
-        "matchtype": 2,
-        "matchday": "2",
-        "mp": 22,
-        "w": 0,
-        "d": 1,
-        "l": 21,
-        "gf": 29,
-        "ga": 146,
-        "gd": -117,
-        "p": 1,
-    },
-]
+        data = await resp.json()
 
+        # If API returns a list, convert directly
+        if isinstance(data, list):
+            return pd.DataFrame(data)
+
+        # If API returns a dict, wrap it in a list
+        if isinstance(data, dict):
+            return pd.DataFrame([data])
+
+        print("getAPI error: unexpected JSON type", type(data))
+        return None
+
+    except Exception as e:
+      print("getAPI exception:", e)
+      return None
+
+def filter_players(df, league = None, club = None):
+    # Always return a Series mask, never a Python bool
+    leagueMask = (
+        df['league'] == league
+        if league is not None
+        else pd.Series(True, index=df.index)
+    )
+
+    clubMask = (
+        df['club'] == club
+        if club is not None
+        else pd.Series(True, index=df.index)
+    )
+
+    return df.loc[leagueMask & clubMask]
+  
+def link_player(name, pid):
+    return f" [{ name }](https://index.simulationsoccer.com/#!/tracker/player?pid={ int(pid) }) "
 
