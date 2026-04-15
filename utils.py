@@ -165,4 +165,7 @@ def filter_players(df, league = None, club = None):
     )
 
     return df.loc[leagueMask & clubMask]
+  
+def link_player(name, pid):
+    return f" [{ name }](https://index.simulationsoccer.com/#!/tracker/player?pid={ int(pid) }) "
 

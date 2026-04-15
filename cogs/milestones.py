@@ -24,6 +24,7 @@ from utils import (
   TEAM_ABBREVIATIONS,
   league_by_id,
   filter_players,
+  link_player,
 )
 
 load_dotenv(".secrets/.env")
@@ -73,16 +74,17 @@ class Milestones(commands.Cog): # create a class for our cog that inherits from 
           (data['name'].isin(actives['name'])) & 
           (data[stat] > 0.95*base[0]) &
           ( True if leagueName is None else (data['league'] == leagueName))
-        ].sort_values(stat)
+        ].sort_values(stat, ascending = False)
         
         for index, row in data.iterrows():
           value = row[stat]
           player = row['name']
+          pid = row['pid']
           
           for m in base:
             if value < m and (value >= min(m * 0.95, (m - 5))):
               lines[m].append(
-                f" { player } is { round(m - value, 2) } away from **{ m }** { stat.title() }!"
+                f" { link_player(player, pid) } is { round(m - value, 2) } away from **{ m }** { stat.title() }!"
               )
 
         for m in base:
@@ -170,26 +172,29 @@ class Milestones(commands.Cog): # create a class for our cog that inherits from 
         ]
 
         recordValue = record[stat].iloc[0]
+        recordName = record['name'].iloc[0]
+        recordPid = record['pid'].iloc[0]
         
         embed.add_field(
             name = f"## Current { stat.title() } Record Holder ##",
-            value = f" **{ record['name'].iloc[0] }** with **{ recordValue }** { stat.title() }!",
+            value = f" **{ link_player(recordName, recordPid) }** with **{ recordValue }** { stat.title() }!",
             inline = False
           )
           
         data = dataFilter.loc[
           (dataFilter['name'].isin(actives['name'])) & 
           ((dataFilter[stat] > 0.90*recordValue) & (dataFilter[stat] < recordValue))
-        ].sort_values(stat)
+        ].sort_values(stat, ascending = False)
         
         lines = []
         
         for index, row in data.iterrows():
           value = row[stat]
           player = row['name']
+          pid = row['pid']
           
           lines.append(
-            f" { player } is { round(recordValue - value, 2) } away from the record!"
+            f" { link_player(player, pid) } is { round(recordValue - value, 2) } away from the record!"
           )
         
         text = "\n".join(lines) if lines else "No players close."  
