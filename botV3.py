@@ -12,6 +12,8 @@ OWNER_ID = int(os.getenv('DISCORD_OWNER'))
 # TEST_ID = int(os.getenv('DISCORD_TEST_ID'))
 # TEST_SERVER_OWNER_ID = int(os.getenv('TEST_SERVER_OWNER_ID'))
 
+# 1857506
+
 bot = commands.Bot(command_prefix="/", intents=discord.Intents.all())
 
 
@@ -21,8 +23,8 @@ async def on_ready():
         ## Use this when testing
         # guild = discord.Object(id=TEST_ID)
         # synced_commands = await bot.tree.sync(guild=guild)
-        
-        ## Use this for public
+        # 
+        # ## Use this for public
         synced_commands = await bot.tree.sync()
         print(f"Synced {len(synced_commands)} commands.")
         

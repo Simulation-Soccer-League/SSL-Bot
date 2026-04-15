@@ -28,7 +28,7 @@ from utils import (
 )
 
 load_dotenv(".secrets/.env")
-# TEST_ID = int(os.getenv("DISCORD_TEST_ID"))
+TEST_ID = int(os.getenv("DISCORD_TEST_ID"))
 
 class Milestones(commands.Cog): # create a class for our cog that inherits from commands.Cog
     # this class is used to create a cog, which is a module that can be added to the bot
@@ -172,8 +172,8 @@ class Milestones(commands.Cog): # create a class for our cog that inherits from 
         ]
 
         recordValue = record[stat].iloc[0]
-        recordName = record['name'].iloc[0]
-        recordPid = record['pid'].iloc[0]
+        recordName = record['name']
+        recordPid = record['pid']
         
         embed.add_field(
             name = f"## Current { stat.title() } Record Holder ##",
