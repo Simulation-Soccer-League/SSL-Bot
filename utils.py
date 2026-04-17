@@ -79,9 +79,13 @@ MILESTONES = {
   "saves": [500, 750, 1000, 1250], 
   "clean sheets": [25, 50, 75],
   "distance run (km)": [2500, 3000, 3500, 4000], 
-  "successful passes": [5000, 7500, 10000, 12500, 15000], 
   "tackles won": [500, 750, 1000], 
-  "interceptions": [500, 750, 1000]
+  "interceptions": [500, 750, 1000],
+  "successful passes": [5000, 7500, 10000, 12500, 15000], 
+  "chances created": [100, 200, 300],
+  "progressive passes": [750, 1000, 1250],
+  "key passes": [500, 750, 1000],
+  "key headers": [100, 250, 400],
 }
 
 LEAGUEIDMAP = {

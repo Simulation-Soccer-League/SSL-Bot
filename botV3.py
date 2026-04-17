@@ -4,7 +4,10 @@ from dotenv import load_dotenv
 import os  # default module
 import asyncio
 import requests
+import logging
 from db_utils import *
+
+# logging.basicConfig(level = logging.DEBUG)
 
 load_dotenv('.secrets/.env')  # load all the variables from the env file
 TOKEN = os.getenv('DISCORD_V3_TOKEN')
@@ -12,7 +15,7 @@ OWNER_ID = int(os.getenv('DISCORD_OWNER'))
 # TEST_ID = int(os.getenv('DISCORD_TEST_ID'))
 # TEST_SERVER_OWNER_ID = int(os.getenv('TEST_SERVER_OWNER_ID'))
 
-# 1857506
+# 1858431
 
 bot = commands.Bot(command_prefix="/", intents=discord.Intents.all())
 

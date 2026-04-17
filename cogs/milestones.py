@@ -98,13 +98,13 @@ class Milestones(commands.Cog): # create a class for our cog that inherits from 
           )
             
         return embed
-      
+    
     @app_commands.command(name = 'upcoming')
     # @app_commands.guilds(discord.Object(id=TEST_ID))
-    async def upcoming(
-      self, 
-      interaction: discord.Interaction, 
-      league: typing.Optional[int] = None
+    async def upcoming2(
+        self, 
+        interaction: discord.Interaction, 
+        league: typing.Optional[int] = None
       ):
         """Returns active players within 5% (or 5) of specific milestones for given statistics.
         
@@ -119,11 +119,15 @@ class Milestones(commands.Cog): # create a class for our cog that inherits from 
         
         embed = await self.milestoneEmbed(actives, stat, base, league)
         
+        print("Get first embed")
+        
         view = MilestoneView(
           self,
           actives,
           league
         )
+        
+        print("view created")
         
         msg = await interaction.followup.send(embed = embed, view = view)
         view.message = msg
@@ -174,13 +178,16 @@ class Milestones(commands.Cog): # create a class for our cog that inherits from 
         recordValue = record[stat].iloc[0]
         recordName = record['name']
         recordPid = record['pid']
+        recordActive = recordName.isin(actives['name']).iloc[0]
         
         embed.add_field(
             name = f"## Current { stat.title() } Record Holder ##",
-            value = f" **{ link_player(recordName, recordPid) }** with **{ recordValue }** { stat.title() }!",
+            value = f" **{ link_player(recordName, recordPid) }**{ '*' if recordActive else ''} with **{ recordValue }** { stat.title() }!",
             inline = False
           )
-          
+        
+        embed.set_footer(text = "* means the record setter is still active.")
+        
         data = dataFilter.loc[
           (dataFilter['name'].isin(actives['name'])) & 
           ((dataFilter[stat] > 0.90*recordValue) & (dataFilter[stat] < recordValue))
