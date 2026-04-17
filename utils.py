@@ -9,6 +9,8 @@ import aiohttp
 
 DEFAULT_FONT_PATH = "./fonts/GOTHAM-BOLD.TTF"
 STANDINGSAPIBASEURL = "https://api.simulationsoccer.com/index/standings"
+SCORESAPIBASEURL = "https://api.simulationsoccer.com/index/schedule"
+BOXSCOREAPIBASEURL = "https://api.simulationsoccer.com/index/boxscore"
 NA_PLACEHOLDER = "N/A"
 LEAGUEIDMAPPING = {
     "major": 1,
@@ -55,6 +57,38 @@ TEAM_ABBREVIATIONS = {
     "xcfc": "Xelajú Cósmico FC", "lcfc": "Liffeyside Celtic FC", "xlc": "Xelajú Cósmico FC",
     "msd" : "AF Masques Sacrés", "lif": "Liffeyside Celtic FC", "rmp": "CS Rova Mpanjaka", "rova": "CS Rova Mpanjaka"
 }
+
+TEAM_GRADIENT_COLORS = {
+    "União São Paulo": {"primary": (229, 37, 37, 255), "secondary": (255, 255, 255, 255), "tertiary": (0, 0, 0, 255)},
+    "AS Paris": {"primary": (0, 65, 112, 255), "secondary": (218, 41, 28, 255), "tertiary": (255, 255, 255, 255)},
+    "Athênai F.C.": {"primary": (40, 61, 112, 255), "secondary": (198, 147, 75, 255), "tertiary": (224, 221, 213, 255)},
+    "Cairo City": {"primary": (247, 178, 0, 255), "secondary": (245, 252, 242, 255), "tertiary": (70, 43, 20, 255)},
+    "Hollywood FC": {"primary": (10, 27, 51, 255), "secondary": (235, 165, 31, 255), "tertiary": (59, 115, 185, 255)},
+    "Inter London": {"primary": (25, 109, 191, 255), "secondary": (255, 255, 255, 255), "tertiary": (0, 0, 0, 255)},
+    "Tokyo S.C.": {"primary": (24, 166, 142, 255), "secondary": (253, 196, 125, 255), "tertiary": (218, 72, 57, 255)},
+    "Montréal United": {"primary": (11, 25, 30, 255), "secondary": (73, 152, 120, 255), "tertiary": (216, 182, 92, 255)},
+    "CF Catalunya": {"primary": (221, 32, 37, 255), "secondary": (255, 255, 255, 255), "tertiary": (248, 222, 13, 255)},
+    "Seoul MFC": {"primary": (27, 69, 34, 255), "secondary": (116, 180, 190, 255), "tertiary": (174, 30, 37, 255)},
+    "CA Buenos Aires": {"primary": (231, 63, 2, 255), "secondary": (220, 188, 42, 255), "tertiary": (255, 255, 255, 255)},
+    "F.C. Kaapstad": {"primary": (2, 73, 42, 255), "secondary": (255, 182, 18, 255), "tertiary": (255, 255, 255, 255)},
+    "Reykjavik United": {"primary": (0, 0, 0, 255), "secondary": (83, 224, 72, 255), "tertiary": (45, 127, 36, 255)},
+    "Schwarzwälder FV": {"primary": (31, 31, 31, 255), "secondary": (255, 250, 250, 255), "tertiary": (5, 71, 42, 255)},
+    "North Shore United": {"primary": (0, 0, 0, 255), "secondary": (255, 255, 255, 255), "tertiary": (203, 213, 255, 255)},
+    "Shanghai Dragons FC": {"primary": (185, 151, 91, 255), "secondary": (0, 0, 0, 255), "tertiary": (255, 255, 255, 255)},
+    "Rapid Magyar SC": {"primary": (167, 109, 247, 255), "secondary": (0, 0, 0, 255), "tertiary": (255, 255, 255, 255)},
+    "CD Tenochtitlan": {"primary": (220, 179, 37, 255), "secondary": (0, 104, 71, 255), "tertiary": (206, 17, 39, 255)},
+    "Krung Thep FC": {"primary": (76, 28, 36, 255), "secondary": (194, 194, 194, 255), "tertiary": (185, 151, 91, 255)},
+    "Xelajú Cósmico FC":{"primary": (14, 104, 102, 255), "secondary": (104, 25, 150, 255), "tertiary": (38, 38, 38, 255)},
+    "Liffeyside Celtic FC":{"primary": (1, 135, 73, 255), "secondary": (0, 0, 0, 255), "tertiary": (255, 255, 255, 255)},
+    "AF Masques Sacrés": {"primary": (64, 5, 2, 255), "secondary": (239, 191, 4, 255), "tertiary": (255, 255, 240, 255)},
+    "CS Rova Mpanjaka": {"primary": (196, 35, 19, 255), "secondary": (20, 63, 42, 255), "tertiary": (171, 146, 76, 255)},
+    "A.C. Romana": {"primary": (92, 20, 102, 255), "secondary": (212, 175, 55, 255), "tertiary": (0, 0, 0, 255)}
+
+}
+
+COLOR_SIMILARITY_THRESHOLD = 100 # Threshold for Euclidean distance between RGB colors
+DEFAULT_PRIMARY_COLOR = (50, 50, 50, 255) # Dark grey, fully opaque
+
 
 OUT_STAT_GROUPS = {
   "Physical": ["apps", "minutes played", "distance run (km)", "dribbles", "player of the match", "yellow cards", "red cards", "fouls", "fouls against", "average rating"],
@@ -104,6 +138,8 @@ MAJORS_DIV1_LOGO_PATH = "./graphics/logos/majors_div1.png"
 MAJORS_DIV2_LOGO_PATH = "./graphics/logos/majors_div2.png"
 MINORS_DIV1_LOGO_PATH = "./graphics/logos/minors_div1.png"
 MINORS_DIV2_LOGO_PATH = "./graphics/logos/minors_div2.png"
+CUP_LOGO_PATH = "./graphics/logos/league-logo.png"
+SHIELD_LOGO_PATH = "./graphics/logos/league-logo.png"
 
 def get_team_logo_path(team_name): # Returns the file path for the team logo image based on the team name.
     team_key = team_name.lower()
