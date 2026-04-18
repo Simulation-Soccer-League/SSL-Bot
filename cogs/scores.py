@@ -10,6 +10,7 @@ import urllib.parse
 from dotenv import load_dotenv
 import os
 import sys
+import re
 
 # Fix import path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -142,6 +143,7 @@ def create_matchup_image(team1, score1, team2, score2):
 
         def is_near_white(color, threshold=200):
             return luminance(color) > threshold
+        
 
         def get_text_color(bg):
             return (0, 0, 0) if luminance(bg) > 160 else (255, 255, 255)
@@ -203,6 +205,8 @@ def create_matchup_image(team1, score1, team2, score2):
 
         if is_near_white(left_secondary) and is_black(left_text_color):
             left_text_color = left_primary
+        if is_black(left_secondary) and is_near_white(left_text_color):
+            left_text_color = left_primary    
 
         
         try:
@@ -327,7 +331,7 @@ class Scores(commands.Cog):
     @app_commands.describe(
     team="Team name or abbreviation"
     )
-    # @app_commands.guilds(discord.Object(id=TEST_ID))
+    @app_commands.guilds(discord.Object(id=TEST_ID))
     async def last_match(self, interaction: discord.Interaction, team: str, season: str = str(CURRENT_SEASON)):
         await interaction.response.defer()
 
@@ -373,7 +377,7 @@ class Scores(commands.Cog):
     @app_commands.describe(
     team="Team name or abbreviation"
     )
-    # @app_commands.guilds(discord.Object(id=TEST_ID))
+    @app_commands.guilds(discord.Object(id=TEST_ID))
     async def next_match(self, interaction: discord.Interaction, team: str, season: str = str(CURRENT_SEASON)):
         await interaction.response.defer()
 
@@ -441,7 +445,7 @@ class Scores(commands.Cog):
 
     # -------- SEARCH MATCH -------- #
     @app_commands.command(name="search_match", description="Search for matches by season, competition, and matchday.")
-    # @app_commands.guilds(discord.Object(id=TEST_ID))
+    @app_commands.guilds(discord.Object(id=TEST_ID))
     @app_commands.describe(
     season="Season number (e.g., 25)",
     competition="Select the competition",
@@ -492,9 +496,35 @@ class Scores(commands.Cog):
         if league_id == 0:
             if str(matchday).lower() == "shi":
                 title_text = f"Season {season} | SSL Shield"
+            
             else:
-                title_text = f"Season {season} | SSL Cup"
-        else:
+                # --- Stage mapping ---
+                stage_map = {
+                "FR": "First Round",
+                "QF": "Quarter Finals",
+                "SF": "Semi Finals",
+                "F": "Final"
+                }
+
+                # --- Extract stage + leg (if any) ---
+                md = str(matchday).upper()
+                match = re.match(r"(FR|QF|SF|F)(\d+)?", md)
+
+                if match:
+                    stage_code = match.group(1)
+                    leg = match.group(2)
+
+                    stage_name = stage_map.get(stage_code, stage_code)
+
+                    if leg:
+                        title_text = f"Season {season} | SSL Cup {stage_name} Leg {leg}"
+                    else:
+                        title_text = f"Season {season} | SSL Cup {stage_name}"
+
+                else:
+                    # fallback (just in case)
+                    title_text = f"Season {season} | SSL Cup {md}"
+        else:   
 
             title_text = f"Season {season} | {competition.name} | Matchday {matchday}"
 
