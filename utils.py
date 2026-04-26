@@ -11,6 +11,10 @@ DEFAULT_FONT_PATH = "./fonts/GOTHAM-BOLD.TTF"
 STANDINGSAPIBASEURL = "https://api.simulationsoccer.com/index/standings"
 SCORESAPIBASEURL = "https://api.simulationsoccer.com/index/schedule"
 BOXSCOREAPIBASEURL = "https://api.simulationsoccer.com/index/boxscore"
+OUTFIELDGBGAPIURL = "https://api.simulationsoccer.com/index/outfieldGameByGame"
+KEEPERGBGAPIURL = "https://api.simulationsoccer.com/index/keeperGameByGame"
+GETORGAPIURL = "https://api.simulationsoccer.com/organization/getOrganizations"
+
 NA_PLACEHOLDER = "N/A"
 LEAGUEIDMAPPING = {
     "major": 1,
@@ -58,35 +62,59 @@ TEAM_ABBREVIATIONS = {
     "msd" : "AF Masques Sacrés", "lif": "Liffeyside Celtic FC", "rmp": "CS Rova Mpanjaka", "rova": "CS Rova Mpanjaka"
 }
 
-TEAM_GRADIENT_COLORS = {
-    "União São Paulo": {"primary": (229, 37, 37, 255), "secondary": (255, 255, 255, 255), "tertiary": (0, 0, 0, 255)},
-    "AS Paris": {"primary": (0, 65, 112, 255), "secondary": (218, 41, 28, 255), "tertiary": (255, 255, 255, 255)},
-    "Athênai F.C.": {"primary": (40, 61, 112, 255), "secondary": (198, 147, 75, 255), "tertiary": (224, 221, 213, 255)},
-    "Cairo City": {"primary": (247, 178, 0, 255), "secondary": (245, 252, 242, 255), "tertiary": (70, 43, 20, 255)},
-    "Hollywood FC": {"primary": (10, 27, 51, 255), "secondary": (235, 165, 31, 255), "tertiary": (59, 115, 185, 255)},
-    "Inter London": {"primary": (25, 109, 191, 255), "secondary": (255, 255, 255, 255), "tertiary": (0, 0, 0, 255)},
-    "Tokyo S.C.": {"primary": (24, 166, 142, 255), "secondary": (253, 196, 125, 255), "tertiary": (218, 72, 57, 255)},
-    "Montréal United": {"primary": (11, 25, 30, 255), "secondary": (73, 152, 120, 255), "tertiary": (216, 182, 92, 255)},
-    "CF Catalunya": {"primary": (221, 32, 37, 255), "secondary": (255, 255, 255, 255), "tertiary": (248, 222, 13, 255)},
-    "Seoul MFC": {"primary": (27, 69, 34, 255), "secondary": (116, 180, 190, 255), "tertiary": (174, 30, 37, 255)},
-    "CA Buenos Aires": {"primary": (231, 63, 2, 255), "secondary": (220, 188, 42, 255), "tertiary": (255, 255, 255, 255)},
-    "F.C. Kaapstad": {"primary": (2, 73, 42, 255), "secondary": (255, 182, 18, 255), "tertiary": (255, 255, 255, 255)},
-    "Reykjavik United": {"primary": (0, 0, 0, 255), "secondary": (83, 224, 72, 255), "tertiary": (45, 127, 36, 255)},
-    "Schwarzwälder FV": {"primary": (31, 31, 31, 255), "secondary": (255, 250, 250, 255), "tertiary": (5, 71, 42, 255)},
-    "North Shore United": {"primary": (0, 0, 0, 255), "secondary": (255, 255, 255, 255), "tertiary": (203, 213, 255, 255)},
-    "Shanghai Dragons FC": {"primary": (185, 151, 91, 255), "secondary": (0, 0, 0, 255), "tertiary": (255, 255, 255, 255)},
-    "Rapid Magyar SC": {"primary": (167, 109, 247, 255), "secondary": (0, 0, 0, 255), "tertiary": (255, 255, 255, 255)},
-    "CD Tenochtitlan": {"primary": (220, 179, 37, 255), "secondary": (0, 104, 71, 255), "tertiary": (206, 17, 39, 255)},
-    "Krung Thep FC": {"primary": (76, 28, 36, 255), "secondary": (194, 194, 194, 255), "tertiary": (185, 151, 91, 255)},
-    "Xelajú Cósmico FC":{"primary": (14, 104, 102, 255), "secondary": (104, 25, 150, 255), "tertiary": (38, 38, 38, 255)},
-    "Liffeyside Celtic FC":{"primary": (1, 135, 73, 255), "secondary": (0, 0, 0, 255), "tertiary": (255, 255, 255, 255)},
-    "AF Masques Sacrés": {"primary": (64, 5, 2, 255), "secondary": (239, 191, 4, 255), "tertiary": (255, 255, 240, 255)},
-    "CS Rova Mpanjaka": {"primary": (196, 35, 19, 255), "secondary": (20, 63, 42, 255), "tertiary": (171, 146, 76, 255)},
-    "A.C. Romana": {"primary": (92, 20, 102, 255), "secondary": (212, 175, 55, 255), "tertiary": (0, 0, 0, 255)}
-
+TEAM_TERTIARY_COLORS = {
+    "Athênai F.C.": "#E0DDD5",
+    "Cairo City": "#462B14",
+    "FC Rio": "#DF9034",
+    "Hollywood FC": "#3B73B9",
+    "Inter London": "#D4AF37",
+    "Tokyo S.C.": "#DA4839",
+    "Montréal United": "#D8B65C",
+    "CF Catalunya": "#F8DE0D",
+    "Seoul MFC": "#AE1E2A",
+    "CA Buenos Aires": "#FFFFFF",
+    "Sydney City": "#FFFFFF",
+    "AS Paris": "#FFFFFF",
+    "União São Paulo": "#000000",
+    "A.C. Romana": "#000000",
+    "Red Star Laos": "#002868",
+    "Reykjavik United": "#2D7F24",
+    "Schwarzwälder FV": "#05472A",
+    "North Shore United": "#CBD5FF",
+    "Shanghai Dragons FC": "#FFFFFF",
+    "Rapid Magyar SC": "#FFFFFF",
+    "CD Tenochtitlan": "#CE1127",
+    "Krung Thep FC": "#B9975B",
+    "Xelajú Cósmico FC": "#262626",
+    "AF Masques Sacrés": "#FFFFF0",
+    "Liffeyside Celtic FC": "#FFFFFF",
+    "CS Rova Mpanjaka": "#AB924C",
 }
 
-COLOR_SIMILARITY_THRESHOLD = 100 # Threshold for Euclidean distance between RGB colors
+def hex_to_rgba(hex_color: str):
+    if not hex_color:
+        return (0, 0, 0, 255)
+
+    hex_color = hex_color.lstrip("#")
+    r = int(hex_color[0:2], 16)
+    g = int(hex_color[2:4], 16)
+    b = int(hex_color[4:6], 16)
+    return (r, g, b, 255)
+
+def get_team_primary_color(team_name):
+    if not team_name:
+        return 0xBD9523
+
+    team_name = team_name.strip()
+
+    for key in TEAM_GRADIENT_COLORS:
+        if team_name.lower() == key.lower():
+            r, g, b, _ = TEAM_GRADIENT_COLORS[key]["primary"]
+            return (r << 16) + (g << 8) + b
+
+    return 0xBD9523
+
+
 DEFAULT_PRIMARY_COLOR = (50, 50, 50, 255) # Dark grey, fully opaque
 
 
@@ -138,8 +166,8 @@ MAJORS_DIV1_LOGO_PATH = "./graphics/logos/majors_div1.png"
 MAJORS_DIV2_LOGO_PATH = "./graphics/logos/majors_div2.png"
 MINORS_DIV1_LOGO_PATH = "./graphics/logos/minors_div1.png"
 MINORS_DIV2_LOGO_PATH = "./graphics/logos/minors_div2.png"
-CUP_LOGO_PATH = "./graphics/logos/league-logo.png"
-SHIELD_LOGO_PATH = "./graphics/logos/league-logo.png"
+CUP_LOGO_PATH = "./graphics/logos/the_cup_logo_white.png"
+SHIELD_LOGO_PATH = "./graphics/logos/the_shield_logo_mono.png"
 
 def get_team_logo_path(team_name): # Returns the file path for the team logo image based on the team name.
     team_key = team_name.lower()
@@ -185,6 +213,38 @@ async def getAPI(endpoint, params = None):
     except Exception as e:
       print("getAPI exception:", e)
       return None
+  
+async def get_team_colors_from_api():
+    url = GETORGAPIURL
+    df = await getAPI(url)
+
+    # fallback if API fails
+    if df is None:
+        return {}
+
+    updated_colors = {}
+
+    for _, row in df.iterrows():
+        name = row.get("name")
+        primary_hex = row.get("primaryColor")
+        secondary_hex = row.get("secondaryColor")
+
+        if not name or not primary_hex or not secondary_hex:
+            continue
+
+        primary = hex_to_rgba(primary_hex)
+        secondary = hex_to_rgba(secondary_hex)
+
+        tertiary_hex = TEAM_TERTIARY_COLORS.get(name)
+        tertiary = hex_to_rgba(tertiary_hex) if tertiary_hex else (0, 0, 0, 255)
+
+        updated_colors[name] = {
+            "primary": primary,
+            "secondary": secondary,
+            "tertiary": tertiary
+        }
+
+    return updated_colors     
 
 def filter_players(df, league = None, club = None):
     # Always return a Series mask, never a Python bool

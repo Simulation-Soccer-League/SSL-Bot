@@ -16,7 +16,7 @@ import re
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 load_dotenv(".secrets/.env")
-TEST_ID = int(os.getenv("DISCORD_TEST_ID", 0))
+# TEST_ID = int(os.getenv("DISCORD_TEST_ID", 0))
 
 # ---------------- CONFIG ---------------- #
 from utils import (
@@ -25,9 +25,9 @@ from utils import (
     CURRENT_SEASON,
     DEFAULT_FONT_PATH,
     TEAM_ABBREVIATIONS,
-    TEAM_GRADIENT_COLORS,
     DEFAULT_PRIMARY_COLOR,
-    get_team_logo_path
+    get_team_logo_path,
+    get_team_colors_from_api
 )
 
 DATE_FORMAT_STR = "%Y-%m-%d"
@@ -39,6 +39,43 @@ DEFAULT_SCORE_COLOR = (7, 11, 81, 255)
 ALL_TEAMS = set(TEAM_ABBREVIATIONS.values())
 
 # ---------------- HELPERS ---------------- #
+
+def get_matchday_help_embed():
+    embed = discord.Embed(
+        title="Matchday Format Help",
+        description="Here are the valid formats you can use for Matchday:",
+        color=0x2b2d31
+    )
+
+    embed.add_field(
+        name="League Matchdays",
+        value=(
+            "• `1` → Matchday 1 (Used for seasons before S24 in Majors/Minors)\n"
+            "• `1.1` → Division 1 Matchday 1\n"
+            "• `2.5` → Division 2 Matchday 5"
+        ),
+        inline=False
+    )
+
+    embed.add_field(
+        name="Cup Stages",
+        value=(
+            "• `FR` → First Round\n"
+            "• `QF` / `QF1` → Quarter Finals (Leg 1 in case it was two legged)\n"
+            "• `SF` / `SF2` → Semi Finals (Leg 2 in case it was two legged)\n"
+            "• `F` → Final"
+        ),
+        inline=False
+    )
+
+    embed.add_field(
+        name="Special",
+        value="• `Shi` → SSL Shield",
+        inline=False
+    )
+
+
+    return embed
 
 def get_league_id_from_match(match):
     return match.get("MatchType", 1)
@@ -126,7 +163,7 @@ def create_linear_gradient(width, height, start_color, end_color):
     return image
 
 
-def create_matchup_image(team1, score1, team2, score2):
+def create_matchup_image(team1, score1, team2, score2, team_colors):
     try:
         # -------- CONFIG -------- #
         width, height = 1200, 320
@@ -135,7 +172,7 @@ def create_matchup_image(team1, score1, team2, score2):
 
         # -------- COLOR HELPERS -------- #
         def get_color(team, key, fallback):
-            return TEAM_GRADIENT_COLORS.get(team, {}).get(key, fallback)
+            return team_colors.get(team, {}).get(key, fallback)
 
         def luminance(color):
             r, g, b = color[:3]
@@ -315,6 +352,23 @@ def format_match_details(match, box):
 class Scores(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.team_colors = {} 
+        
+    async def ensure_team_colors(self):
+        if not self.team_colors:
+            try:
+                colors = await get_team_colors_from_api()
+
+                if not colors:
+                    raise ValueError("Empty color data")
+
+                self.team_colors = colors
+                print(f" Loaded {len(colors)} team colors")
+
+            except Exception as e:
+                print(" Failed to load team colors:", e)
+                self.team_colors = {}
+        
 
     async def fetch_api(self, season):
         return await asyncio.to_thread(get_api_data, season)
@@ -325,16 +379,18 @@ class Scores(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         print(f"{__name__} is online!")
+        
 
     # -------- LAST MATCH -------- #
     @app_commands.command(name="last_match", description="Get the most recent completed match for a team.")
     @app_commands.describe(
     team="Team name or abbreviation"
     )
-    @app_commands.guilds(discord.Object(id=TEST_ID))
+    
+    # @app_commands.guilds(discord.Object(id=TEST_ID))
     async def last_match(self, interaction: discord.Interaction, team: str, season: str = str(CURRENT_SEASON)):
         await interaction.response.defer()
-
+        await self.ensure_team_colors()
         team_name = resolve_team(team)
         if not team_name:
             return await interaction.followup.send("No such team found.")
@@ -363,7 +419,8 @@ class Scores(commands.Cog):
 
         image = await asyncio.to_thread(create_matchup_image,
                                         match.get("Home"), match.get("HomeScore"),
-                                        match.get("Away"), match.get("AwayScore"))
+                                        match.get("Away"), match.get("AwayScore"),
+                                        self.team_colors)
 
         if image:
             file = discord.File(image, filename=FILENAME_LAST_MATCH_IMAGE)
@@ -377,10 +434,10 @@ class Scores(commands.Cog):
     @app_commands.describe(
     team="Team name or abbreviation"
     )
-    @app_commands.guilds(discord.Object(id=TEST_ID))
+    # @app_commands.guilds(discord.Object(id=TEST_ID))
     async def next_match(self, interaction: discord.Interaction, team: str, season: str = str(CURRENT_SEASON)):
         await interaction.response.defer()
-
+        await self.ensure_team_colors()
         team_name = resolve_team(team)
         if not team_name:
             return await interaction.followup.send("Unknown team")
@@ -433,7 +490,8 @@ class Scores(commands.Cog):
         image = await asyncio.to_thread(
             create_matchup_image,
             match.get("Home"), None,
-            match.get("Away"), None
+            match.get("Away"), None,
+            self.team_colors
         )
 
         if image:
@@ -445,11 +503,11 @@ class Scores(commands.Cog):
 
     # -------- SEARCH MATCH -------- #
     @app_commands.command(name="search_match", description="Search for matches by season, competition, and matchday.")
-    @app_commands.guilds(discord.Object(id=TEST_ID))
+    # @app_commands.guilds(discord.Object(id=TEST_ID))
     @app_commands.describe(
     season="Season number (e.g., 25)",
     competition="Select the competition",
-    matchday="Majors/Minors: 1.1 for Div 1 MD 1 | Shield: Shi",
+    matchday="Matchday Format: 1, 1.1, QF1, Shi | Use /matchday_help to know more about the format",
     team="Optional: Filter by a specific team"
     )
     @app_commands.choices(
@@ -470,7 +528,9 @@ class Scores(commands.Cog):
         team: str = None
     ):
         await interaction.response.defer()
-
+        
+        
+        await self.ensure_team_colors()
         league_id = competition.value
 
         team_name = None
@@ -552,7 +612,8 @@ class Scores(commands.Cog):
             image = await asyncio.to_thread(
                 create_matchup_image,
                 match.get("Home"), match.get("HomeScore"),
-                match.get("Away"), match.get("AwayScore")
+                match.get("Away"), match.get("AwayScore"),
+                self.team_colors
             )
 
             if image:
@@ -565,6 +626,16 @@ class Scores(commands.Cog):
 
         await interaction.followup.send(embeds=embeds, files=files)
 
+    # -------- MATCHDAY HELP -------- #
+    
+    @app_commands.command(
+    name="matchday_help",
+    description="Show matchday format guide"
+    )
+    # @app_commands.guilds(discord.Object(id=TEST_ID))
+    async def matchday_help(self, interaction: discord.Interaction):
+        embed = get_matchday_help_embed()
+        await interaction.response.send_message(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(Scores(bot))
