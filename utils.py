@@ -62,34 +62,6 @@ TEAM_ABBREVIATIONS = {
     "msd" : "AF Masques Sacrés", "lif": "Liffeyside Celtic FC", "rmp": "CS Rova Mpanjaka", "rova": "CS Rova Mpanjaka"
 }
 
-TEAM_TERTIARY_COLORS = {
-    "Athênai F.C.": "#E0DDD5",
-    "Cairo City": "#462B14",
-    "FC Rio": "#DF9034",
-    "Hollywood FC": "#3B73B9",
-    "Inter London": "#D4AF37",
-    "Tokyo S.C.": "#DA4839",
-    "Montréal United": "#D8B65C",
-    "CF Catalunya": "#F8DE0D",
-    "Seoul MFC": "#AE1E2A",
-    "CA Buenos Aires": "#FFFFFF",
-    "Sydney City": "#FFFFFF",
-    "AS Paris": "#FFFFFF",
-    "União São Paulo": "#000000",
-    "A.C. Romana": "#000000",
-    "Red Star Laos": "#002868",
-    "Reykjavik United": "#2D7F24",
-    "Schwarzwälder FV": "#05472A",
-    "North Shore United": "#CBD5FF",
-    "Shanghai Dragons FC": "#FFFFFF",
-    "Rapid Magyar SC": "#FFFFFF",
-    "CD Tenochtitlan": "#CE1127",
-    "Krung Thep FC": "#B9975B",
-    "Xelajú Cósmico FC": "#262626",
-    "AF Masques Sacrés": "#FFFFF0",
-    "Liffeyside Celtic FC": "#FFFFFF",
-    "CS Rova Mpanjaka": "#AB924C",
-}
 
 def hex_to_rgba(hex_color: str):
     if not hex_color:
@@ -101,18 +73,6 @@ def hex_to_rgba(hex_color: str):
     b = int(hex_color[4:6], 16)
     return (r, g, b, 255)
 
-def get_team_primary_color(team_name):
-    if not team_name:
-        return 0xBD9523
-
-    team_name = team_name.strip()
-
-    for key in TEAM_GRADIENT_COLORS:
-        if team_name.lower() == key.lower():
-            r, g, b, _ = TEAM_GRADIENT_COLORS[key]["primary"]
-            return (r << 16) + (g << 8) + b
-
-    return 0xBD9523
 
 
 DEFAULT_PRIMARY_COLOR = (50, 50, 50, 255) # Dark grey, fully opaque
@@ -235,13 +195,9 @@ async def get_team_colors_from_api():
         primary = hex_to_rgba(primary_hex)
         secondary = hex_to_rgba(secondary_hex)
 
-        tertiary_hex = TEAM_TERTIARY_COLORS.get(name)
-        tertiary = hex_to_rgba(tertiary_hex) if tertiary_hex else (0, 0, 0, 255)
-
         updated_colors[name] = {
             "primary": primary,
             "secondary": secondary,
-            "tertiary": tertiary
         }
 
     return updated_colors     

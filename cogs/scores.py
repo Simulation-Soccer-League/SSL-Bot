@@ -11,12 +11,13 @@ from dotenv import load_dotenv
 import os
 import sys
 import re
+from asyncio.log import logger
 
 # Fix import path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 load_dotenv(".secrets/.env")
-# TEST_ID = int(os.getenv("DISCORD_TEST_ID", 0))
+TEST_ID = int(os.getenv("DISCORD_TEST_ID", 0))
 
 # ---------------- CONFIG ---------------- #
 from utils import (
@@ -52,7 +53,8 @@ def get_matchday_help_embed():
         value=(
             "• `1` → Matchday 1 (Used for seasons before S24 in Majors/Minors)\n"
             "• `1.1` → Division 1 Matchday 1\n"
-            "• `2.5` → Division 2 Matchday 5"
+            "• `2.5` → Division 2 Matchday 5\n"
+            "• `PL` → Promotion/Relegation Playoffs"
         ),
         inline=False
     )
@@ -178,23 +180,35 @@ def create_matchup_image(team1, score1, team2, score2, team_colors):
             r, g, b = color[:3]
             return 0.299*r + 0.587*g + 0.114*b
 
-        def is_near_white(color, threshold=200):
-            return luminance(color) > threshold
-        
+        def is_white(color):
+            r, g, b = color[:3]
+            return r > 240 and g > 240 and b > 240
 
-        def get_text_color(bg):
-            return (0, 0, 0) if luminance(bg) > 160 else (255, 255, 255)
-    
-        def ensure_contrast(text_color, bg_color):
-            return text_color if abs(luminance(text_color) - luminance(bg_color)) > 60 else get_text_color(bg_color)
+        def is_black(color):
+            r, g, b = color[:3]
+            return r < 20 and g < 20 and b < 20
+
+        def get_bar_text_color(bg_color, alternate_color):
+            # White background -> use alternate team color
+            if is_white(bg_color):
+                return alternate_color[:3]
+
+            # Black background -> use alternate team color
+            if is_black(bg_color):
+                return alternate_color[:3]
+
+            # Very light background -> black text
+            if luminance(bg_color) > 160:
+                return (0, 0, 0)
+
+            # Everything else -> white text
+            return (255, 255, 255)
 
         left_primary = get_color(team1, "primary", DEFAULT_PRIMARY_COLOR)
         left_secondary = get_color(team1, "secondary", left_primary)
-        left_tertiary = get_color(team1, "tertiary", left_primary)
 
         right_primary = get_color(team2, "primary", DEFAULT_PRIMARY_COLOR)
         right_secondary = get_color(team2, "secondary", right_primary)
-        right_tertiary = get_color(team2, "tertiary", right_primary)
 
         img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
 
@@ -230,20 +244,19 @@ def create_matchup_image(team1, score1, team2, score2, team_colors):
         img.paste(logo1, (int(width * 0.25 - logo_size / 2), logo_y), logo1)
         img.paste(logo2, (int(width * 0.75 - logo_size / 2), logo_y), logo2)
 
-        draw.rectangle((0, height - bottom_bar_height, width // 2, height), fill=left_secondary)
+        draw.rectangle((0, height - bottom_bar_height, width // 2, height), fill=left_primary)
         draw.rectangle((width // 2, height - bottom_bar_height, width, height), fill=right_secondary)
 
         # -------- TEXT COLORS -------- #
-        left_text_color = ensure_contrast(left_tertiary, left_secondary)
-        right_text_color = ensure_contrast(right_tertiary, right_secondary)
-       
-        def is_black(color, threshold=40):
-            return luminance(color) < threshold
-
-        if is_near_white(left_secondary) and is_black(left_text_color):
-            left_text_color = left_primary
-        if is_black(left_secondary) and is_near_white(left_text_color):
-            left_text_color = left_primary    
+        left_text_color = get_bar_text_color(
+            left_primary,
+            left_secondary
+        )
+        
+        right_text_color = get_bar_text_color(
+            right_secondary,
+            right_primary
+        )   
 
         
         try:
@@ -313,7 +326,10 @@ def format_match_details(match, box):
     matchday = match.get("MatchDay")
 
     matchday_str = ""
-    if matchday:
+    if str(matchday).upper() == "PL":
+        matchday_str = " | Pro/Rel Playoffs"
+    
+    elif matchday:
         md = str(matchday)
 
         if "." in md:
@@ -507,7 +523,7 @@ class Scores(commands.Cog):
     @app_commands.describe(
     season="Season number (e.g., 25)",
     competition="Select the competition",
-    matchday="Matchday Format: 1, 1.1, QF1, Shi | Use /matchday_help to know more about the format",
+    matchday="Use /matchday_help command to see all the valid formats you can use for Matchday.",
     team="Optional: Filter by a specific team"
     )
     @app_commands.choices(
@@ -585,8 +601,46 @@ class Scores(commands.Cog):
                     # fallback (just in case)
                     title_text = f"Season {season} | SSL Cup {md}"
         else:   
+            
+            md = str(matchday)
+            if md.upper() == "PL":
+                title_text = (
+                    f"Season {season} | "
+                    f"{competition.name} | "
+                    f"Pro/Rel Playoffs"
+                )
 
-            title_text = f"Season {season} | {competition.name} | Matchday {matchday}"
+            elif "." in md:
+                try:
+                    div, day = md.split(".")
+
+                    title_text = (
+                        f"Season {season} | "
+                        f"{competition.name} | "
+                        f"Division {int(div)} Matchday {int(day)}"
+                    )
+
+                except Exception:
+                    title_text = (
+                        f"Season {season} | "
+                        f"{competition.name} | "
+                        f"{md}"
+                    )
+
+            else:
+                try:
+                    title_text = (
+                        f"Season {season} | "
+                        f"{competition.name} | "
+                        f"Matchday {int(md)}"
+                    )
+
+                except Exception:
+                    title_text = (
+                        f"Season {season} | "
+                        f"{competition.name} | "
+                        f"{md}"
+                    )
 
         embeds = []
         files = []
@@ -632,7 +686,7 @@ class Scores(commands.Cog):
     name="matchday_help",
     description="Show matchday format guide"
     )
-    # @app_commands.guilds(discord.Object(id=TEST_ID))
+    @app_commands.guilds(discord.Object(id=TEST_ID))
     async def matchday_help(self, interaction: discord.Interaction):
         embed = get_matchday_help_embed()
         await interaction.response.send_message(embed=embed)
