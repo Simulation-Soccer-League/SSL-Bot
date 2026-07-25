@@ -523,7 +523,7 @@ class Scores(commands.Cog):
     @app_commands.describe(
     season="Season number (e.g., 25)",
     competition="Select the competition",
-    matchday="Use /matchday_help command to see all the valid formats you can use for Matchday.",
+    matchday="Use 1.MD format for Div 1 matchdays etc, R16,Qualifying,QF etc for knockout rounds",
     team="Optional: Filter by a specific team"
     )
     @app_commands.choices(
@@ -577,6 +577,8 @@ class Scores(commands.Cog):
                 # --- Stage mapping ---
                 stage_map = {
                 "FR": "First Round",
+                "Qualifying": "Qualifying Round",
+                "R16": "Round of 16",
                 "QF": "Quarter Finals",
                 "SF": "Semi Finals",
                 "F": "Final"
@@ -584,7 +586,7 @@ class Scores(commands.Cog):
 
                 # --- Extract stage + leg (if any) ---
                 md = str(matchday).upper()
-                match = re.match(r"(FR|QF|SF|F)(\d+)?", md)
+                match = re.match(r"(FR|Qualifying|R16|QF|SF|F)(\d+)?", md)
 
                 if match:
                     stage_code = match.group(1)
