@@ -1,5 +1,5 @@
-from discord.ui import View, button
-from discord import ButtonStyle
+from discord.ui import View, button, Select
+from discord import ButtonStyle, SelectOption
 import discord
 import pandas as pd
 
@@ -8,126 +8,149 @@ from utils import (
   MILESTONES,
 )
 
-class MilestoneView(View):
-    def __init__(self, cog, actives, league):
-        super().__init__(timeout = 300) # Time out after 5 minutes
-        self.cog = cog
-        self.actives = actives
-        self.league = league
 
-        # Create one button per milestone
-        for stat, base in MILESTONES.items():
-            self.add_item(self.make_button(stat, base, league))
+class MilestoneSelect(discord.ui.Select):
+  def __init__(self, ancestor):
+    self.ancestor = ancestor
 
-        # First button active
-        self.children[0].disabled = True
-        
-    async def on_timeout(self):
-        # Disable all buttons
-        for child in self.children:
-            child.disabled = True
+    # Add all options based on MILESTONES
+    options = [
+      discord.SelectOption(
+        label = stat.title(),
+        value = stat
+      )
+      for stat in MILESTONES.keys()
+    ]
 
-        # Edit the original message to update the disabled state
-        try:
-            await self.message.edit(view=self)
-        except Exception as e:
-            print("Timeout edit failed:", e)
+    super().__init__(
+        placeholder = "Choose an option...",
+        min_values = 1,
+        max_values = 1,
+        options = options
+    )
 
-    def make_button(self, stat, base, league):
-        # Create a button instance
-        button = discord.ui.Button(
-            label = stat.title(),
-            style = discord.ButtonStyle.success
+  async def callback(self, interaction: discord.Interaction):
+    value = self.values[0]
+    base = MILESTONES[value]
+    
+    embed = await self.ancestor.cog.milestoneEmbed(
+      self.ancestor.actives, 
+      value, 
+      base, 
+      self.ancestor.league
+    )
+    
+    # If this interaction has not been responded to yet:
+    if interaction.response.is_done():
+        # Use followup
+        await interaction.followup.edit_message(
+            message_id = interaction.message.id,
+            embed = embed,
+            view = self.ancestor
         )
-        
-        # Define the callback dynamically
-        async def callback(interaction: discord.Interaction):
-            # Toggle active state
-            for child in self.children:
-                child.disabled = False
-            button.disabled = True
-            
-            # Build embed for this milestone
-            embed = await self.cog.milestoneEmbed(self.actives, stat, base, league)
-            
-            # If this interaction has not been responded to yet:
-            if interaction.response.is_done():
-                # Use followup
-                await interaction.followup.edit_message(
-                    message_id = interaction.message.id,
-                    embed = embed,
-                    view = self
-                )
-            else:
-                # First response
-                await interaction.response.edit_message(
-                    embed = embed,
-                    view = self
-                )
+    else:
+        # First response
+        await interaction.response.edit_message(
+            embed = embed,
+            view = self.ancestor
+        )
 
-        # Attach callback to button
-        button.callback = callback
-        return button
 
+class MilestoneView(View):
+  def __init__(self, cog, actives, league):
+    super().__init__(timeout = 60)
+    self.cog = cog
+    self.actives = actives
+    self.league = league
+    
+    self.add_item(MilestoneSelect(self))
+    
+  async def on_timeout(self):
+    for child in self.children:
+      child.disabled = True
+
+      # Fully disable select menus visually
+      if isinstance(child, discord.ui.Select):
+        child.placeholder = " "
+        child.options = [discord.SelectOption(label="TIMED OUT", value="disabled")]
+
+    try:
+        await self.message.edit(view=self)
+    except Exception as e:
+        print("Timeout edit failed:", e)
+
+class RecordSelect(discord.ui.Select):
+  def __init__(self, ancestor):
+    self.ancestor = ancestor
+
+    # Add all options based on MILESTONES
+    options = [
+      discord.SelectOption(
+        label = stat.title(),
+        value = stat
+      )
+      for stat in MILESTONES.keys()
+    ]
+
+    super().__init__(
+        placeholder = "Choose an option...",
+        min_values = 1,
+        max_values = 1,
+        options = options
+    )
+
+  async def callback(self, interaction: discord.Interaction):
+    value = self.values[0]
+    
+    embed = await self.ancestor.cog.recordEmbed(
+      self.ancestor.actives, 
+      value, 
+      self.ancestor.league,
+      self.ancestor.org
+    )
+    
+    # If this interaction has not been responded to yet:
+    if interaction.response.is_done():
+        # Use followup
+        await interaction.followup.edit_message(
+            message_id = interaction.message.id,
+            embed = embed,
+            view = self.ancestor
+        )
+    else:
+        # First response
+        await interaction.response.edit_message(
+            embed = embed,
+            view = self.ancestor
+        )
 
 class RecordView(View):
-    def __init__(self, cog, actives, league, org):
-        super().__init__(timeout = 300) # Time out after 5 minutes
-        self.cog = cog
-        self.actives = actives
-        self.league = league
-        self.org = org
+  def __init__(self, cog, actives, league, org):
+    super().__init__(timeout = 60) # Time out after 1 minute
+    self.cog = cog
+    self.actives = actives
+    self.league = league
+    self.org = org
 
-        # Create one button per milestone
-        for stat, base in MILESTONES.items():
-            self.add_item(self.make_button(stat, league, org))
+    self.add_item(RecordSelect(self))
+    
+  async def on_timeout(self):
+    for child in self.children:
+      child.disabled = True
 
-        # First button active
-        self.children[0].disabled = True
-      
-    async def on_timeout(self):
-        # Disable all buttons
-        for child in self.children:
-            child.disabled = True
+      # Fully disable select menus visually
+      if isinstance(child, discord.ui.Select):
+        child.placeholder = " "
+        child.options = [discord.SelectOption(label="TIMED OUT", value="disabled")]
 
-        # Edit the original message to update the disabled state
-        try:
-            await self.message.edit(view=self)
-        except Exception as e:
-            print("Timeout edit failed:", e)
+    try:
+        await self.message.edit(view=self)
+    except Exception as e:
+        print("Timeout edit failed:", e)
 
-    def make_button(self, stat, league, org):
-        # Create a button instance
-        button = discord.ui.Button(
-            label = stat.title(),
-            style = discord.ButtonStyle.success
-        )
-        
-        # Define the callback dynamically
-        async def callback(interaction: discord.Interaction):
-            # Toggle active state
-            for child in self.children:
-                child.disabled = False
-            button.disabled = True
-            
-            # Build embed for this milestone
-            embed = await self.cog.recordEmbed(self.actives, stat, league, org)
-            
-            # If this interaction has not been responded to yet:
-            if interaction.response.is_done():
-                # Use followup
-                await interaction.followup.edit_message(
-                    message_id = interaction.message.id,
-                    embed = embed,
-                    view = self
-                )
-            else:
-                # First response
-                await interaction.response.edit_message(
-                    embed = embed,
-                    view = self
-                )
 
-        # Attach callback to button
-        button.callback = callback
-        return button
+
+
+
+
+
