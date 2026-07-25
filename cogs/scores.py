@@ -412,7 +412,7 @@ class Scores(commands.Cog):
             return await interaction.followup.send("No such team found.")
 
         data = await self.fetch_api(season)
-
+        print("1 - Loaded data!")
         matches = [
             (parse_date(m.get("IRLDate")), m)
             for m in data
@@ -424,11 +424,12 @@ class Scores(commands.Cog):
             return await interaction.followup.send("No matches found.")
 
         match = sorted(matches, key=lambda x: x[0], reverse=True)[0][1]
+        print("2 - Found match!")
 
         league_id = get_league_id_from_match(match)
 
         box = await self.fetch_boxscore(season, league_id, match.get("MatchDay"), team_name)
-
+        print("3 - Found box score!")
         desc = format_match_details(match, box)
 
         embed = discord.Embed(title=f"Last Match details for {team_name}", description=desc)
