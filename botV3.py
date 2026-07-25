@@ -15,7 +15,7 @@ OWNER_ID = int(os.getenv('DISCORD_OWNER'))
 # TEST_ID = int(os.getenv('DISCORD_TEST_ID'))
 # TEST_SERVER_OWNER_ID = int(os.getenv('TEST_SERVER_OWNER_ID'))
 
-# 1858431
+# 1898558
 
 bot = commands.Bot(command_prefix="/", intents=discord.Intents.all())
 
