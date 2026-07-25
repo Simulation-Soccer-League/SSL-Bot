@@ -9,6 +9,12 @@ import aiohttp
 
 DEFAULT_FONT_PATH = "./fonts/GOTHAM-BOLD.TTF"
 STANDINGSAPIBASEURL = "https://api.simulationsoccer.com/index/standings"
+SCORESAPIBASEURL = "https://api.simulationsoccer.com/index/schedule"
+BOXSCOREAPIBASEURL = "https://api.simulationsoccer.com/index/boxscore"
+OUTFIELDGBGAPIURL = "https://api.simulationsoccer.com/index/outfieldGameByGame"
+KEEPERGBGAPIURL = "https://api.simulationsoccer.com/index/keeperGameByGame"
+GETORGAPIURL = "https://api.simulationsoccer.com/organization/getOrganizations"
+
 NA_PLACEHOLDER = "N/A"
 LEAGUEIDMAPPING = {
     "major": 1,
@@ -55,6 +61,22 @@ TEAM_ABBREVIATIONS = {
     "xcfc": "Xelajú Cósmico FC", "lcfc": "Liffeyside Celtic FC", "xlc": "Xelajú Cósmico FC",
     "msd" : "AF Masques Sacrés", "lif": "Liffeyside Celtic FC", "rmp": "CS Rova Mpanjaka", "rova": "CS Rova Mpanjaka"
 }
+
+
+def hex_to_rgba(hex_color: str):
+    if not hex_color:
+        return (0, 0, 0, 255)
+
+    hex_color = hex_color.lstrip("#")
+    r = int(hex_color[0:2], 16)
+    g = int(hex_color[2:4], 16)
+    b = int(hex_color[4:6], 16)
+    return (r, g, b, 255)
+
+
+
+DEFAULT_PRIMARY_COLOR = (50, 50, 50, 255) # Dark grey, fully opaque
+
 
 OUT_STAT_GROUPS = {
   "Physical": ["apps", "minutes played", "distance run (km)", "dribbles", "player of the match", "yellow cards", "red cards", "fouls", "fouls against", "average rating"],
@@ -108,6 +130,8 @@ MAJORS_DIV1_LOGO_PATH = "./graphics/logos/majors_div1.png"
 MAJORS_DIV2_LOGO_PATH = "./graphics/logos/majors_div2.png"
 MINORS_DIV1_LOGO_PATH = "./graphics/logos/minors_div1.png"
 MINORS_DIV2_LOGO_PATH = "./graphics/logos/minors_div2.png"
+CUP_LOGO_PATH = "./graphics/logos/the_cup_logo_white.png"
+SHIELD_LOGO_PATH = "./graphics/logos/the_shield_logo_mono.png"
 
 def get_team_logo_path(team_name): # Returns the file path for the team logo image based on the team name.
     team_key = team_name.lower()
@@ -153,6 +177,34 @@ async def getAPI(endpoint, params = None):
     except Exception as e:
       print("getAPI exception:", e)
       return None
+  
+async def get_team_colors_from_api():
+    url = GETORGAPIURL
+    df = await getAPI(url)
+
+    # fallback if API fails
+    if df is None:
+        return {}
+
+    updated_colors = {}
+
+    for _, row in df.iterrows():
+        name = row.get("name")
+        primary_hex = row.get("primaryColor")
+        secondary_hex = row.get("secondaryColor")
+
+        if not name or not primary_hex or not secondary_hex:
+            continue
+
+        primary = hex_to_rgba(primary_hex)
+        secondary = hex_to_rgba(secondary_hex)
+
+        updated_colors[name] = {
+            "primary": primary,
+            "secondary": secondary,
+        }
+
+    return updated_colors     
 
 def filter_players(df, league = None, club = None):
     # Always return a Series mask, never a Python bool
