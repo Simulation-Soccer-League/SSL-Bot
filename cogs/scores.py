@@ -3,7 +3,6 @@ from discord.ext import commands
 from discord import app_commands
 import requests
 import datetime
-import asyncio
 from PIL import Image, ImageDraw, ImageFont
 import io
 import urllib.parse
@@ -11,7 +10,6 @@ from dotenv import load_dotenv
 import os
 import sys
 import re
-from asyncio.log import logger
 
 # Fix import path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -386,12 +384,6 @@ class Scores(commands.Cog):
                 self.team_colors = {}
         
 
-    async def fetch_api(self, season):
-        return await asyncio.to_thread(get_api_data, season)
-
-    async def fetch_boxscore(self, season, league_id, matchday, team):
-        return await asyncio.to_thread(get_boxscore, season, league_id, matchday, team)
-
     @commands.Cog.listener()
     async def on_ready(self):
         print(f"{__name__} is online!")
@@ -411,8 +403,7 @@ class Scores(commands.Cog):
         if not team_name:
             return await interaction.followup.send("No such team found.")
 
-        data = await self.fetch_api(season)
-        print("1 - Loaded data!")
+        data = get_api_data(season)
         matches = [
             (parse_date(m.get("IRLDate")), m)
             for m in data
@@ -424,18 +415,15 @@ class Scores(commands.Cog):
             return await interaction.followup.send("No matches found.")
 
         match = sorted(matches, key=lambda x: x[0], reverse=True)[0][1]
-        print("2 - Found match!")
 
         league_id = get_league_id_from_match(match)
 
-        box = await self.fetch_boxscore(season, league_id, match.get("MatchDay"), team_name)
-        print("3 - Found box score!")
+        box = get_boxscore(season, league_id, match.get("MatchDay"), team_name)
         desc = format_match_details(match, box)
 
         embed = discord.Embed(title=f"Last Match details for {team_name}", description=desc)
 
-        image = await asyncio.to_thread(create_matchup_image,
-                                        match.get("Home"), match.get("HomeScore"),
+        image = create_matchup_image(match.get("Home"), match.get("HomeScore"),
                                         match.get("Away"), match.get("AwayScore"),
                                         self.team_colors)
 
@@ -459,7 +447,7 @@ class Scores(commands.Cog):
         if not team_name:
             return await interaction.followup.send("Unknown team")
 
-        data = await self.fetch_api(season)
+        data = await get_api_data(season)
 
         matches = [
             (parse_date(m.get("IRLDate")), m)
@@ -504,8 +492,7 @@ class Scores(commands.Cog):
 
         embed = discord.Embed(title=f"Next Match details for {team_name}", description=desc)
 
-        image = await asyncio.to_thread(
-            create_matchup_image,
+        image = create_matchup_image(
             match.get("Home"), None,
             match.get("Away"), None,
             self.team_colors
@@ -556,7 +543,7 @@ class Scores(commands.Cog):
             if not team_name:
                 return await interaction.followup.send("Invalid team name.")
 
-        data = await self.fetch_api(season)
+        data = await get_api_data(season)
 
         matches = [
             m for m in data
@@ -650,7 +637,7 @@ class Scores(commands.Cog):
             box = None
 
             if match.get("HomeScore") is not None:
-                box = await self.fetch_boxscore(
+                box = await get_boxscore(
                     season,
                     league_id,
                     match.get("MatchDay"),
@@ -664,8 +651,7 @@ class Scores(commands.Cog):
                 description=desc
             )
 
-            image = await asyncio.to_thread(
-                create_matchup_image,
+            image = create_matchup_image(
                 match.get("Home"), match.get("HomeScore"),
                 match.get("Away"), match.get("AwayScore"),
                 self.team_colors
