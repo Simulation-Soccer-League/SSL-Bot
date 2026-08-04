@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 import os
 import sys
 import re
+import pytz
 from asyncio.log import logger
 
 # Fix import path
@@ -32,6 +33,7 @@ from utils import (
 )
 
 DATE_FORMAT_STR = "%Y-%m-%d"
+EST_TIMEZONE = pytz.timezone('America/New_York')
 
 FILENAME_NEXT_MATCH_IMAGE = "next_match.png"
 FILENAME_LAST_MATCH_IMAGE = "last_match.png"
@@ -40,6 +42,26 @@ DEFAULT_SCORE_COLOR = (7, 11, 81, 255)
 ALL_TEAMS = set(TEAM_ABBREVIATIONS.values())
 
 # ---------------- HELPERS ---------------- #
+
+def get_match_status(match, today=None):
+    
+    if today is None:
+        today = datetime.datetime.now(EST_TIMEZONE).date()
+
+    home_score = match.get("HomeScore")
+    away_score = match.get("AwayScore")
+
+    # If both scores are present and non-empty, it's played
+    if home_score is not None and away_score is not None and \
+       str(home_score).strip() != '' and str(away_score).strip() != '':
+        return "played"
+
+    # Otherwise fall back to comparing date vs today
+    match_date = parse_date(match.get("IRLDate"))
+    if match_date:
+        return "played" if match_date < today else "scheduled"
+
+    return "unknown"
 
 def get_matchday_help_embed():
     embed = discord.Embed(
@@ -400,39 +422,51 @@ class Scores(commands.Cog):
     # -------- LAST MATCH -------- #
     @app_commands.command(name="last_match", description="Get the most recent completed match for a team.")
     @app_commands.describe(
-    team="Team name or abbreviation"
+        team="Team name or abbreviation"
     )
-    
     # @app_commands.guilds(discord.Object(id=TEST_ID))
     async def last_match(self, interaction: discord.Interaction, team: str, season: str = str(CURRENT_SEASON)):
         await interaction.response.defer()
         await self.ensure_team_colors()
+
         team_name = resolve_team(team)
         if not team_name:
-            return await interaction.followup.send("No such team found.")
+            return await interaction.followup.send(
+                f"Sorry, I don't recognize '{team}'. Please use a valid team name or abbreviation."
+            )
 
-        data = await self.fetch_api(season)
+        try:
+            data = await self.fetch_api(season)
+        except Exception as e:
+            logger.error(f"Failed to fetch schedule data for season {season}: {e}")
+            return await interaction.followup.send(
+                f"Could not retrieve match data for season {season}. Please try again later."
+            )
 
-        matches = [
-            (parse_date(m.get("IRLDate")), m)
-            for m in data
-            if team_name in [m.get("Home"), m.get("Away")]
-            and m.get("HomeScore") is not None
-        ]
+        if not data:
+            return await interaction.followup.send(f"No match data found for season {season}.")
+
+        today = datetime.datetime.now(EST_TIMEZONE).date()
+
+        matches = []
+        for m in data:
+            if team_name not in [m.get("Home"), m.get("Away")]:
+                continue
+            date_obj = parse_date(m.get("IRLDate"))
+            if date_obj is None:
+                continue
+            status = get_match_status(m, today)
+            if status == "played":
+                matches.append((date_obj, m))
 
         if not matches:
-            return await interaction.followup.send("No matches found.")
+            return await interaction.followup.send(f"No played matches found for **{team_name}** in season {season}.")
 
         match = sorted(matches, key=lambda x: x[0], reverse=True)[0][1]
-
         league_id = get_league_id_from_match(match)
-
         box = await self.fetch_boxscore(season, league_id, match.get("MatchDay"), team_name)
-
         desc = format_match_details(match, box)
-
         embed = discord.Embed(title=f"Last Match details for {team_name}", description=desc)
-
         image = await asyncio.to_thread(create_matchup_image,
                                         match.get("Home"), match.get("HomeScore"),
                                         match.get("Away"), match.get("AwayScore"),
@@ -459,20 +493,23 @@ class Scores(commands.Cog):
             return await interaction.followup.send("Unknown team")
 
         data = await self.fetch_api(season)
+        today = datetime.datetime.now(EST_TIMEZONE).date() 
 
-        matches = [
-            (parse_date(m.get("IRLDate")), m)
-            for m in data
-            if m.get("IRLDate")
-            and team_name in [m.get("Home"), m.get("Away")]
-            and m.get("HomeScore") is None
-        ]
+        matches = []
+        for m in data:
+            if team_name not in [m.get("Home"), m.get("Away")]:
+                continue
+            date_obj = parse_date(m.get("IRLDate"))
+            if date_obj is None:
+                continue
+            status = get_match_status(m, today)
+            if status == "scheduled":
+                matches.append((date_obj, m))
 
         if not matches:
             return await interaction.followup.send("No upcoming matches found.")
-
+        
         match = sorted(matches, key=lambda x: x[0])[0][1]
-
         league_name = get_league_display_name(match)
         matchday = match.get("MatchDay")
         matchday_str = ""
