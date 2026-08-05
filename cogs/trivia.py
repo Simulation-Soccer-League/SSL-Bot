@@ -22,8 +22,10 @@ class Trivia(commands.Cog):
     async def trivia(self, interaction: discord.Interaction):
         ssl_trivia = [
             'Seoul Mythic FC used to be located in Rio de Janeiro as FC Rio.',
+            'Reykjavik United FC used to be located in Sydney as Sydney City FC.',
+            'Schwarzwälder FV used to be located in Accra as Adowa Accra FC.',
             'Pingu Nootazuki (@Pingu) became the first user to retire their player.',
-            'The shape and symbols of the Shield trophy is an homage to the original 6 teams in the league.',
+            'The shape and symbols of the Shield trophy is an homage to the original 6 teams in the league, FC Rio, Cairo City, Athênai F.C., Hollywood FC, Inter London, and Tokyo S.C.',
             'The league was originally founded by @Playoff Lonzo, @siddhus and @FriendlyHermit in the fall of 2021.',
             'The first player ever created was Radek Soboda (@Will3).',
             'The inaugural manager of Cairo City was @Will3.',
